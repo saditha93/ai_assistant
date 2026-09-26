@@ -1,8 +1,14 @@
+import os
 from pathlib import Path
 
+from dotenv import load_dotenv
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 ROOT = Path(__file__).resolve().parent.parent
+
+# LangSmith and LangGraph read their settings (LANGSMITH_*, LANGGRAPH_STRICT_MSGPACK) from
+# the real environment, so .env has to be loaded into os.environ, not only into Settings.
+load_dotenv(ROOT / ".env")
 
 
 class Settings(BaseSettings):
@@ -64,3 +70,6 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+if not settings.has_langsmith:
+    os.environ["LANGSMITH_TRACING"] = "false"  # avoid "missing API key" warnings on every run
