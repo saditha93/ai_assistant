@@ -38,9 +38,13 @@ def llm_available() -> bool:
     return settings.has_llm and not FAULTS["llm_all"]
 
 
-def llm(*, name: str, tools: list | None = None, schema: type | None = None) -> Runnable:
+def llm(*, name: str, tools: list | None = None, schema: type | None = None, light: bool = False) -> Runnable:
     """Primary model with the lite model as fallback, optionally with tools or a
-    structured-output schema applied to both."""
+    structured-output schema applied to both.
+
+    light=True flips the order for cheap, high-volume calls (research sub-queries, query
+    rewrites, summaries): the lite model answers first and the main model is the fallback.
+    That keeps most of the main model's quota for planning and final answers."""
     if not llm_available():
         raise LLMUnavailable("No LLM available (missing GOOGLE_API_KEY or fault injected)")
 
@@ -54,8 +58,12 @@ def llm(*, name: str, tools: list | None = None, schema: type | None = None) -> 
 
     # The fault switch swaps in a model name that does not exist, so the failure and the
     # fallback are real API behaviour rather than a mock.
-    primary = "gemini-fault-injected" if FAULTS["llm_primary"] else settings.gemini_model
-    return build(primary).with_fallbacks([build(settings.gemini_fallback_model)]).with_config(run_name=name)
+    first, second = settings.gemini_model, settings.gemini_fallback_model
+    if light:
+        first, second = second, first
+    if FAULTS["llm_primary"]:
+        first = "gemini-fault-injected"
+    return build(first).with_fallbacks([build(second)]).with_config(run_name=name)
 
 
 def _embedder() -> GoogleGenerativeAIEmbeddings:

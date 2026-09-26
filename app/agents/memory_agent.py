@@ -34,7 +34,7 @@ async def _summarise(summary: str, older: list) -> str:
     turns = "\n".join(f"{m.type}: {m.text[:600]}" for m in older)
     if llm_available():
         try:
-            reply = await llm(name="memory_summary").ainvoke(
+            reply = await llm(name="memory_summary", light=True).ainvoke(
                 [HumanMessage(SUMMARY_PROMPT.format(summary=summary or "(empty)", turns=turns))])
             return reply.text.strip()
         except Exception:  # a failed summary must not lose the turn; fall through to truncation

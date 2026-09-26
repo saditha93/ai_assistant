@@ -38,6 +38,16 @@ from app.guardrails import REFUSAL
 from app.observability import log
 
 NodeFn = Callable[[dict, Runtime[User]], Awaitable[dict]]
+
+
+def describe_error(exc: Exception) -> str:
+    """A short message for state, the UI and the answer. Full details go to the log."""
+    text = str(exc)
+    if isinstance(exc, TimeoutError):
+        return "timed out"
+    if "RESOURCE_EXHAUSTED" in text or "429" in text:
+        return "language model quota or rate limit reached"
+    return f"{type(exc).__name__}: {text[:160]}"
 WORKER_FOR_STEP = {"retrieve": "retrieval_agent", "research": "research_agent", "tools": "tool_agent"}
 
 
@@ -55,7 +65,7 @@ def node(name: str, fn: NodeFn, *, timeout: float = 60, pops_step: bool = False,
             raise  # human-in-the-loop interrupt: let LangGraph pause the run
         except Exception as exc:
             log.exception("node_failed", node=name)
-            error = "timed out" if isinstance(exc, TimeoutError) else f"{type(exc).__name__}: {exc}"
+            error = describe_error(exc)
             update = on_error(state, exc) if on_error else {}
             update["errors"] = update.get("errors", []) + [{"node": name, "error": error}]
             emit({"type": "node", "node": name, "status": "error", "error": error})
