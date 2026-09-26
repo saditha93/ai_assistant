@@ -339,6 +339,18 @@ use the main model first.
 **Thinking level.** `GEMINI_THINKING_LEVEL=low` keeps a multi-step turn responsive. Answers are grounded
 in retrieved text, so deeper reasoning adds latency for little gain. It can be raised per deployment.
 
-**Free-tier quota.** The Gemini free tier allows about 20 requests per day per Flash model. One deep
-research turn uses around 10 main-model calls. For a full demo, either enable billing on the key or
-set `GEMINI_MODEL` to a lite model, which has a larger free allowance.
+**Built for the Gemini free tier.** Free keys have small quotas that apply per model: about 20 requests
+per day on a Flash model and 100 embedded texts per minute. The assistant is designed around that:
+
+| Measure | Where |
+|---|---|
+| A chain of six free models (four Flash, two Flash-Lite). Each has its own quota, so the chain multiplies the daily allowance. | `GEMINI_MODEL`, `GEMINI_FALLBACK_MODEL` |
+| A quota tracker reads real 429 responses. A model whose daily quota is used up is skipped until the midnight Pacific reset; a per-minute limit skips it for the retry delay Google sends. Calls go straight to the next model instead of waiting on errors. | `record_quota_error`, `QuotaWatcher` in `app/llm.py` |
+| A client-side limiter keeps each model under `GEMINI_RPM` requests per minute, so bursts (parallel research sub-queries) do not trigger 429s. | `InMemoryRateLimiter` in `app/llm.py` |
+| Cheap calls go to Flash-Lite first. | `llm(..., light=True)` |
+| Research budget: 6 turns, 12 sub-calls, 2 in parallel. | `app/agents/research_agent.py` |
+| Ingestion embeds 20 texts at a time and waits out the per-minute limit when it is hit. | `app/retrieval/ingest.py` |
+| When every model is used up, the no-LLM path takes over: keyword planner, fixed research plan, extractive answers with citations. | `llm_available()` |
+
+`/health` and the UI's System health panel list which models are usable and which are waiting for
+their quota to reset.

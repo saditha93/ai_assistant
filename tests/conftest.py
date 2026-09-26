@@ -1,6 +1,11 @@
+import os
+
 import pytest
 
 from app.config import settings
+
+os.environ["LANGSMITH_TRACING"] = "false"
+os.environ["LANGCHAIN_TRACING_V2"] = "false"
 
 
 @pytest.fixture(autouse=True)

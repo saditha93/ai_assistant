@@ -16,8 +16,8 @@ from app.retrieval.bm25 import BM25
 from app.retrieval.documents import catalog, index_text, load_corpus
 from app.sandbox import run_code
 
-MAX_CELLS = 8
-MAX_SUBCALLS = 20
+MAX_CELLS = 6
+MAX_SUBCALLS = 12
 MAX_DEPTH = 2
 DEADLINE_S = 170
 MAX_PROMPT_CHARS = 12000
@@ -121,7 +121,7 @@ class ResearchSession:
         prompts = [str(p)[:MAX_PROMPT_CHARS] for p in prompts]
         self._use_budget(len(prompts))
         self.emit({"type": "research", "status": "sub_query_batch", "count": len(prompts)})
-        replies = llm(name="rlm_sub_query", light=True).batch(prompts, config={"max_concurrency": 4})
+        replies = llm(name="rlm_sub_query", light=True).batch(prompts, config={"max_concurrency": 2})
         return [r.text for r in replies]
 
     @traceable(name="rlm_research", run_type="chain")

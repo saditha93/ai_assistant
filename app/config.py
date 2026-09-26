@@ -17,8 +17,10 @@ class Settings(BaseSettings):
 
     # Gemini
     google_api_key: str = ""
-    gemini_model: str = "gemini-3.8-flash"
-    gemini_fallback_model: str = "gemini-3.5-flash-lite"
+    # Comma-separated. Free tier quotas are per model, so several models spread the load.
+    gemini_model: str = "gemini-3.8-flash,gemini-3.7-flash,gemini-3.6-flash,gemini-3.5-flash"
+    gemini_fallback_model: str = "gemini-3.5-flash-lite,gemini-3.1-flash-lite"
+    gemini_rpm: int = 10
     embed_model: str = "gemini-embedding-001"
     embed_dim: int = 768
     gemini_thinking_level: str = "low"

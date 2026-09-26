@@ -4,6 +4,7 @@ from typing import Annotated, TypedDict
 from langchain_core.messages import AnyMessage
 from langgraph.graph.message import add_messages
 
+
 def merge_evidence(current: list[dict], new: list[dict]) -> list[dict]:
     """Add chunks we have not seen yet, so two agents finding the same passage cite it once."""
     merged = list(current)

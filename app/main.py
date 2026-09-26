@@ -1,4 +1,6 @@
+import datetime as dt
 import re
+import time
 import uuid
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -18,7 +20,7 @@ from app.agents.graph import build_graph
 from app.auth import User, authenticate, create_token, current_user, rate_limited_user, require_admin
 from app.config import settings
 from app.guardrails import clean_stream_text
-from app.llm import llm_available
+from app.llm import EXHAUSTED, llm_available, model_chain
 from app.observability import log, send_langsmith_feedback, setup_logging
 from app.resilience import BREAKERS, FAULTS
 from app.tools import mcp_tools
@@ -224,6 +226,11 @@ async def health():
             "pinecone": "configured" if settings.has_pinecone else "not_configured (keyword fallback)",
             "mcp": "ok" if mcp_up else "unavailable",
             "langsmith": "tracing" if settings.has_langsmith else "off",
+        },
+        "llm_models": {
+            "usable": model_chain() if settings.has_llm else [],
+            "quota_exhausted": {m: dt.datetime.fromtimestamp(t, dt.UTC).isoformat(timespec="minutes")
+                                for m, t in EXHAUSTED.items() if t > time.time()},
         },
         "circuit_breakers": {name: b.state for name, b in BREAKERS.items()},
         "faults": FAULTS,

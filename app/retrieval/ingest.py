@@ -1,5 +1,6 @@
 import argparse
 import asyncio
+import re
 from collections import defaultdict
 
 from pinecone import AsyncPinecone
@@ -10,7 +11,22 @@ from app.llm import embed_documents
 from app.retrieval.documents import index_text, load_corpus
 from app.retrieval.search import DENSE_FIELD, METADATA_FIELDS, SPARSE_FIELD, hybrid_search, local_index
 
-EMBED_BATCH = 50
+# Free tier allows 100 embedded texts per minute, and each text counts as one request.
+EMBED_BATCH = 20
+
+
+async def embed_with_retry(texts: list[str], attempts: int = 6) -> list[list[float]]:
+    for attempt in range(attempts):
+        try:
+            return await embed_documents(texts)
+        except Exception as exc:
+            if "RESOURCE_EXHAUSTED" not in str(exc) or attempt == attempts - 1:
+                raise
+            delay = re.search(r"retry in ([\d.]+)s", str(exc))
+            wait = float(delay.group(1)) + 2 if delay else 30
+            print(f"    embedding quota reached, waiting {wait:.0f}s")
+            await asyncio.sleep(wait)
+    raise RuntimeError("unreachable")
 
 
 async def ensure_index(pc: AsyncPinecone, recreate: bool) -> None:
@@ -48,7 +64,7 @@ async def ingest(recreate: bool = False) -> None:
             for start in range(0, len(items), EMBED_BATCH):
                 batch = items[start:start + EMBED_BATCH]
                 texts = [index_text(c) for c in batch]
-                dense = await embed_documents(texts)
+                dense = await embed_with_retry(texts)
                 records = [
                     {"id": c["id"], "values": vec, "sparse_values": bm25.encode_doc(text),
                      "metadata": {k: c[k] for k in METADATA_FIELDS}}

@@ -76,9 +76,14 @@ The ingest command ends with a smoke query through the same search code the agen
 Every path above is the same code the app uses when a dependency fails in production. That is why
 the whole test suite runs offline.
 
-> **Gemini free tier.** Each Flash model allows about 20 requests per day on a free key, and one deep
-> research turn uses around 10. For demos, enable billing on the key, or set
-> `GEMINI_MODEL=gemini-3.5-flash-lite` in `.env`.
+> **Works on the Gemini free tier.**
+> - **Model chain.** Free quotas are per model, so the assistant uses a chain of six free models.
+> - **Skips exhausted models.** A model that answers 429 is skipped until its quota resets.
+> - **Rate limiter.** It keeps each model under its requests-per-minute limit.
+> - **Pacing.** Ingestion paces itself to the embedding limit.
+> - **Fallback.** If every model is used up, answers fall back to limited mode.
+>
+> See "Built for the Gemini free tier" in [docs/architecture.md](docs/architecture.md).
 
 ## How the brief maps to the code
 
@@ -124,8 +129,11 @@ Retrieval eval (`evals/golden.yaml`, 15 paraphrased questions):
 
 | System | recall@5 | MRR |
 |---|---|---|
-| BM25 (offline) | 1.00 | 0.85 |
-| Hybrid / hybrid + rerank | run `python -m evals.run` with keys | |
+| BM25 only | 1.00 | 0.85 |
+| Hybrid (dense + BM25) | 0.93 | 0.83 |
+| Hybrid + rerank | 1.00 | 0.97 |
+
+The reranker is what puts the right document first; hybrid alone mostly helps on paraphrased questions.
 
 ## Project layout
 

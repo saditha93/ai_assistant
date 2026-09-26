@@ -232,6 +232,10 @@ with st.sidebar:
             for dep, value in health["dependencies"].items():
                 st.markdown(f"- {dep}: `{value}`")
             st.markdown("Circuit breakers: " + ", ".join(f"{k} `{v}`" for k, v in health["circuit_breakers"].items()))
+            models = health.get("llm_models", {})
+            st.markdown("Gemini models: " + (", ".join(f"`{m}`" for m in models.get("usable", [])) or "none"))
+            for model, until in models.get("quota_exhausted", {}).items():
+                st.caption(f"{model}: free-tier quota used, back at {until} UTC")
 
     if user["role"] == "admin":
         st.subheader("Fault injection")
