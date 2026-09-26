@@ -103,3 +103,20 @@ async def save_feedback(store: BaseStore, user: User, run_id: str, score: int, c
     await store.aput(("feedback",), run_id, {
         "ts": _now(), "user": user.username, "run_id": run_id, "score": score, "comment": comment,
     })
+
+
+def format_for_prompt(context: dict, summary: str) -> str:
+    """Memory as a short text block for prompts."""
+    if not context:
+        return "(none)"
+    lines = []
+    profile = context.get("profile")
+    if profile:
+        lines.append(f"User: {profile['name']}, {profile['role']}, {profile['department']} department.")
+    if context.get("facts"):
+        lines.append("Known about the user: " + "; ".join(context["facts"]))
+    if summary:
+        lines.append(f"Earlier in this conversation: {summary}")
+    for past in context.get("related", []):
+        lines.append(f"Previously asked ({past['ts'][:10]}): {past['question']} -> {past['answer_summary'][:150]}")
+    return "\n".join(lines) or "(none)"
