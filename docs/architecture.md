@@ -11,7 +11,7 @@ flowchart LR
     UI -- "REST + SSE (JWT)" --> API[FastAPI<br/>app/main.py]
     API --> RL[Token bucket<br/>per user]
     API --> G[LangGraph agents<br/>app/agents/graph.py]
-    G --> GEM[Gemini 3.8 Flash<br/>fallback 3.5 Flash-Lite]
+    G --> GEM[Gemini free tier<br/>4 Flash + 2 Flash-Lite chain]
     G --> PC[(Pinecone<br/>hybrid index)]
     G --> MCP[MCP server<br/>mcp_server/server.py]
     G --> SQL[(SQLite<br/>checkpoints + memory store)]
@@ -22,7 +22,7 @@ flowchart LR
 | Process | Port | Role |
 |---|---|---|
 | `ui` | 8501 | Chat and live agent activity panel. No business logic. |
-| `api` | 8000 | Auth, rate limiting, runs the graph, streams events. |
+| `api` | 8000 | Auth, rate limiting, runs the graph, streams events, reports health and model quota state. |
 | `mcp` | 8001 | Dummy enterprise systems (directory, service catalog, incidents). |
 
 The MCP server is a separate process on purpose: it can fail on its own, which is how we demonstrate
@@ -141,7 +141,10 @@ can narrow by `document_type`, `department` and `created_ts >= since`; dates are
 because Pinecone range filters need numbers.
 
 **Attribution.** Every hit carries `doc_id`, `title`, `section` and `created_date`. The answer cites
-chunk ids, and the validator checks each one against the retrieved set.
+chunk ids, and the validator checks each one against the retrieved set. Accepted forms:
+- one chunk: `[RB-002#3]`
+- several chunks in one bracket: `[A#1, B#2]`
+- a whole document: `[POL-003]`, but only when at least one of its chunks was retrieved.
 
 **Fallback.** When Pinecone is unconfigured, down, or its circuit breaker is open, the same filters
 run over the local chunks with BM25. The result is labelled `keyword_fallback`, and the answer
@@ -152,8 +155,21 @@ with the reserved field names used by the vectors API (`_values`, `_sparse_value
 `upsert(values, sparse_values)` / `query(vector, sparse_vector)` calls work (`app/retrieval/ingest.py`).
 
 **Evaluation.** `evals/golden.yaml` has 15 questions deliberately phrased differently from the
-documents. `python -m evals.run` reports recall@5 and MRR for BM25, hybrid, and hybrid + rerank
-(the last two need keys).
+documents. `python -m evals.run` reports recall@5 and MRR. Results against the live index:
+
+| System | recall@5 | MRR |
+|---|---|---|
+| BM25 only | 1.00 | 0.85 |
+| Hybrid (dense + BM25) | 0.93 | 0.83 |
+| Hybrid + rerank | 1.00 | 0.97 |
+
+The reranker is what puts the right document first (MRR 0.85 → 0.97). Hybrid on its own mostly helps
+with paraphrased questions. The corpus is small, so keyword search is already strong; the gap
+would grow with a larger, noisier collection.
+
+**Ingestion** (`app/retrieval/ingest.py`) creates the hybrid index if it is missing and upserts
+166 chunks. Embeddings are requested 20 at a time, and on a free-tier 429 it waits for the delay
+Google returns before continuing.
 
 ## 4. Recursive Language Model (research agent)
 
@@ -183,19 +199,28 @@ sequenceDiagram
 |---|---|
 | Explore collections | The root model starts with a catalog: titles, types, dates and section names, but no content. |
 | Python search plans | Each turn the model writes one Python cell using `find_documents`, `search`, `read_section` and `batch`. |
-| Decompose large tasks | `batch()` splits the work, and `llm_batch()` analyses the batches in parallel (max concurrency 4). |
+| Decompose large tasks | `batch()` splits the work, and `llm_batch()` analyses the batches in parallel (max concurrency 2, on the Flash-Lite models first). |
 | Retrieve targeted sections | `read_section(doc_id, "Root Cause")` returns one section, sanitised and prefixed with its citation id. |
 | Call sub-agents recursively | `sub_agent(task, doc_ids)` starts a new research loop on a subset of documents (maximum depth 2). |
 | Aggregate | The model combines the batch results in code and calls `FINAL(answer)`. |
 
-**Limits.**
-- 6 cells per loop and 20 sub-calls per task.
+**Limits** (sized for the free tier):
+- 6 cells per loop.
+- 12 sub-calls per task.
 - 170-second deadline.
 - Output shown back to the model is truncated to 2,000 characters.
 
-**Fallback.** If the generated code fails twice, or the model never calls `FINAL`, a fixed plan runs:
-find → batch → analyse each batch → combine. It also runs when no LLM is available at all, in which
-case the analysis is extractive.
+**Finishing.** On its second-to-last turn the model is reminded to call `FINAL`. If it still runs out
+of turns, it gets one text-only turn to write the answer from what it has already found. Live runs
+showed the model often has the synthesis ready by then, so this keeps the work instead of discarding
+it.
+
+**Fallback.** If the generated code fails twice in a row, or the loop errors, a fixed plan runs:
+find → batch → analyse each batch → combine.
+- **Budget.** The fixed plan gets its own small budget (fresh sub-call count, 45 extra seconds).
+- **Failed analysis.** If an analysis call fails, it keeps the raw section text instead of failing.
+- **No LLM at all.** The same plan runs, and the analysis is extractive.
+- **Evidence is kept.** Sections already read stay as evidence even if the research node errors.
 
 **Citations.** Every section the code reads is recorded and becomes evidence, so the validator's
 citation check also applies to research answers.
@@ -205,7 +230,8 @@ the sandbox starts. The generated code has no way to reach restricted documents.
 
 **Sandbox** (`app/sandbox.py`):
 - An AST allowlist blocks imports, `with` / `try` / `class`, dunder and private attributes, and `str.format`.
-- The builtins are minimal.
+- The builtins are minimal: iteration, maths, type conversions, `Counter`, `defaultdict`, `mean`
+  and `median`. There is no `open`, `eval`, `getattr` or `type`.
 - A `sys.settrace` deadline stops infinite loops.
 - The same sandbox runs the `python_analysis` tool.
 
@@ -282,16 +308,19 @@ Input validation happens at every boundary:
 
 | Failure | Detection | Degraded behaviour |
 |---|---|---|
-| LLM (primary) | API error | `with_fallbacks` switches to Flash-Lite. |
-| LLM (all) | No key, or all models fail | Keyword planner, fixed research plan, extractive answer marked "limited mode". |
+| LLM (one model) | API error | `with_fallbacks` moves to the next model in the chain. |
+| LLM quota (429) | Quota tracker reads the error | That model is skipped until its quota resets (daily: midnight Pacific; per-minute: retry delay). |
+| LLM (all) | No key, all models failed, or all quotas used | Keyword planner, fixed research plan, extractive answer marked "limited mode". |
+| Slow planner | 25-second deadline inside the supervisor | Keyword plan. If the supervisor node crashes, a retrieve-only plan (allowed for every role). |
+| Failed query rewrite | Exception in the retrieval agent | Keeps the original query's results. |
 | Pinecone | Error or timeout; breaker opens after 3 failures | Local BM25 over the same chunks; the reranker is skipped. |
 | MCP server | Connection error; breaker | Tools reported unavailable; the answer continues without them. |
 | Tool timeout | `asyncio.wait_for` | Error shown in the panel; other results are still used. |
 | Invalid request | Pydantic / guard | 401, 403, 422 or 429 with a clear message; refusal in chat. |
 | Agent crash | Node wrapper | Error recorded, node fallback applied, run continues. |
 
-Retries happen inside the clients (Gemini `max_retries`, Pinecone's built-in retry), so we did not add
-a second retry layer. The circuit breaker (`app/resilience.py`) stops us from hammering a dependency
+Retries happen inside the clients (Gemini `max_retries=1`, Pinecone's built-in retry), so we did not add
+a second retry layer. On the free tier, moving to the next model beats waiting on the same one. The circuit breaker (`app/resilience.py`) stops us from hammering a dependency
 that is clearly down.
 
 Admins can flip **fault switches** in the UI (`llm_primary`, `llm_all`, `pinecone`, `mcp`,
@@ -315,6 +344,8 @@ would need Redis.
   - **Linking from the UI.** The UI shows the run id under every answer, and thumbs up/down feedback
     is attached to that trace (`create_feedback`).
 - **Activity stream.** The same events that drive the UI panel are available to any SSE client.
+- **Health.** `/health` lists dependency status, circuit breaker states, fault switches, the Gemini
+  models that are usable now, and those waiting for their quota to reset.
 - **Structured logs.** JSON logs via structlog, with `request_id`, `user`, `session`, `run_id` and `path`
   bound per request.
 - **Audit log.** Tool calls, denials, blocked or flagged inputs, approvals and fault changes are
@@ -324,17 +355,17 @@ would need Redis.
 
 | Use | Model | Reason |
 |---|---|---|
-| All agents | `gemini-3.8-flash` | Current stable Flash model. Fast and inexpensive, with reliable tool calling and JSON-schema output and a 1M-token context. Answers are grounded in retrieved text, so a Pro model would add latency and cost for little gain. |
-| Fallback | `gemini-3.5-flash-lite` | Different model, same API, very cheap. Keeps the assistant answering when the primary fails. |
+| Planning, tools, research root loop, answers | `gemini-3.8-flash`, then `3.7`, `3.6`, `3.5-flash` | Flash models are fast, with reliable tool calling and JSON-schema output and a 1M-token context. Answers are grounded in retrieved text, so a Pro model would add latency for little gain, and Pro has almost no free quota. Several Flash versions are chained because free quota is per model. |
+| Cheap calls, last resort | `gemini-3.5-flash-lite`, `gemini-3.1-flash-lite` | The cheapest models, with the most free quota. Used first for research sub-queries, query rewrites and summaries, and last for everything else. |
 | Embeddings | `gemini-embedding-001` @ 768 | Strong retrieval quality. 768 dimensions cut storage and latency to a quarter of the full 3072 with little quality loss. |
 | Reranker | Pinecone `bge-reranker-v2-m3` | Hosted cross-encoder, no extra service to run. Skipped automatically if it is unavailable. |
 
 All model names are environment variables.
 
-**Routing by cost.** High-volume, low-stakes calls try the lite model first and fall back to the main
-model: research sub-queries (`llm_query` / `llm_batch`), query rewrites and memory summaries. That is
-`llm(..., light=True)` in `app/llm.py`. Planning, tool use, the research root loop and final answers
-use the main model first.
+**Routing by cost.** High-volume, low-stakes calls try the Flash-Lite models first and fall back to
+the Flash models: research sub-queries (`llm_query` / `llm_batch`), query rewrites and memory
+summaries. That is `llm(..., light=True)` in `app/llm.py`. Planning, tool use, the research root loop
+and final answers use the Flash models first.
 
 **Thinking level.** `GEMINI_THINKING_LEVEL=low` keeps a multi-step turn responsive. Answers are grounded
 in retrieved text, so deeper reasoning adds latency for little gain. It can be raised per deployment.

@@ -5,12 +5,20 @@ UI, what to open in LangSmith, and what to say.
 
 ## Before recording
 
-1. Fill in `.env` with `GOOGLE_API_KEY`, `PINECONE_API_KEY` and `LANGSMITH_API_KEY`.
-2. `uv run python -m app.retrieval.ingest --recreate`. The smoke query at the end should say `mode=hybrid reranked=True`.
-3. `docker compose up --build` and open http://localhost:8501.
-4. Open the LangSmith project `crestline-assistant` in a second tab.
-5. Have `docs/architecture.md` open for the diagrams.
-6. Reset fault switches (all off). To start with empty memory, run `docker compose down -v` first.
+1. Fill in `.env` with `GOOGLE_API_KEY`, `PINECONE_API_KEY` and `LANGSMITH_API_KEY`. Use the model
+   lists from `.env.example`, so all six free models are in the chain.
+2. `uv run python -m app.retrieval.ingest`. The smoke query at the end should say
+   `mode=hybrid reranked=True`. On the free tier it may pause to wait out the per-minute embedding limit.
+3. **Timing.** Record soon after midnight Pacific time (13:30 in Sri Lanka, 12:30 during US daylight
+   saving time). Every model's daily quota is fresh then.
+   - Avoid long rehearsals right before recording: each research question uses about 10 Flash calls.
+4. `docker compose up --build` and open http://localhost:8501.
+5. **Check System health** in the sidebar: llm `ok`, pinecone `configured`, mcp `ok`, langsmith
+   `tracing`, and all six Gemini models usable.
+6. Open the LangSmith project `crestline-assistant` in a second tab.
+7. Have `docs/architecture.md` open for the diagrams.
+8. **Clean start.** Reset fault switches (all off). To start with empty memory, run
+   `docker compose down -v` first.
 
 ## 1. Introduction (0:00 - 3:00)
 
@@ -29,7 +37,9 @@ Walk through the diagrams in `docs/architecture.md`:
 - **Shared state and failure containment.** Each agent owns a slice of state, and the node wrapper
   records errors and applies fallbacks instead of crashing (the butterfly effect).
 - **Retrieval.** Dense + BM25 in one Pinecone query with alpha weighting, namespaces, access filters,
-  reranker, corrective retry.
+  reranker, corrective retry. Show the eval table: the reranker lifts MRR from 0.85 to 0.97.
+- **Free tier.** Chain of six Gemini models, the quota tracker, the client-side rate limiter, and the
+  small research budget.
 
 ## 3. Short code tour (9:00 - 13:00)
 
@@ -37,6 +47,7 @@ Walk through the diagrams in `docs/architecture.md`:
 - `app/agents/state.py`: reducers, and why the user lives in runtime context, not state.
 - `app/auth.py`: `ROLE_POLICY` is the single source of truth.
 - `app/tools.py`: `execute_tool()` re-checks the role on every call.
+- `app/llm.py`: the model chain and `record_quota_error()`, which skips a model until its quota resets.
 
 ## 4. Viewer: search, streaming, transparency (13:00 - 18:00)
 
@@ -80,13 +91,16 @@ Sign in as `analyst1 / analyst123`.
    - **Catalog.** Research starts on N documents, with the catalog only.
    - **Code cells.** Each generated Python cell is shown (explore → filter → `read_section` → `batch` → `llm_batch`).
    - **Sub-calls.** Sub-LLM calls run in parallel, possibly with a recursive `sub_agent` at depth 1.
-   - **FINAL.** The model finishes with FINAL. The answer groups causes such as connection pool
-     exhaustion, card switch timeouts, certificate expiry and config change, with citations.
+   - **FINAL.** The model finishes with FINAL. If it runs out of turns, the panel shows `forced_final`
+     and it writes the answer from what it found.
+   - **The answer.** It groups causes such as connection pool exhaustion, card switch timeouts,
+     certificate expiry and config change, with citations.
 3. In **LangSmith**, open this trace (run id under the answer):
    - `chat_turn` → `research_agent` → `rlm_research` → `rlm_cell` spans and `rlm_sub_query` LLM calls.
    - Point out the nesting for `sub_agent` (a second `rlm_research` inside a cell).
    - Show the `hybrid_search` retriever span from a normal question for comparison.
-4. Explain the limits (cells, sub-calls, depth, deadline) and the fixed-plan fallback.
+4. Explain the limits (6 turns, 12 sub-calls, depth 2, 170-second deadline) and the fixed-plan
+   fallback. The limits are sized for the free tier.
 
 ## 7. Analyst: MCP and analysis tools (29:00 - 33:00)
 
@@ -111,8 +125,8 @@ Sign in as `admin1 / admin123`.
    - In LangSmith, the interrupted and resumed runs are in the same thread.
 2. Open the **Audit log** in the sidebar: tool calls, blocked and flagged inputs, approvals and rejections, fault changes.
 3. **Fault switches** (sidebar). Ask a normal question after each one:
-   - `llm_primary` on: the answer still arrives. The LangSmith trace shows the primary model failing
-     and the fallback model answering.
+   - `llm_primary` on: the answer still arrives. The LangSmith trace shows the first model failing and
+     the next model in the chain answering.
    - `pinecone` on: the retrieval panel says `keyword_fallback` with a note. After 3 failures the
      breaker shows `open` in System health.
    - `mcp` on (or `docker compose stop mcp`): the answer says the directory is unavailable and continues.
@@ -120,7 +134,12 @@ Sign in as `admin1 / admin123`.
    - `llm_all` on: limited mode with an extractive answer, keyword planner and fixed research plan.
    - Turn everything off again.
 4. **Rate limit.** Send messages quickly as `viewer1` (bucket of 10, refill 0.2/s). A friendly 429
-   message appears with the retry time. Thresholds are set per role in `RATE_LIMITS`.
+   message appears with the retry time. Thresholds are set per role in `RATE_LIMITS`. Tip: each message
+   still uses Gemini calls, so to save quota set a small viewer bucket in `.env` for the demo, e.g.
+   `RATE_LIMITS={"viewer": [3, 0.05], "analyst": [20, 0.5], "admin": [40, 1.0]}`, and send four quick
+   messages.
+5. **Model quota.** Open System health. If any model hit its free-tier quota during the demo, it is
+   listed with the time it comes back, and the chain has already moved on to the next model.
 
 ## 9. Memory and feedback (39:00 - 41:00)
 
@@ -138,8 +157,10 @@ Use the Assumptions and Trade-offs sections of the README. The key points:
 - **Sandbox.** It checks the syntax tree and enforces a deadline; production would isolate it in a container.
 - **Single-process state.** In-memory limits and breakers, SQLite for memory; Redis and Postgres are the upgrade path.
 - **Research search.** The research agent searches an in-memory, role-filtered copy of the chunks.
+- **Free tier.** A six-model chain with quota tracking keeps the assistant answering on a free key.
+  The cost is that answers may come from different Flash versions.
 
 Close with:
-- `uv run pytest`: 52 offline tests.
+- `uv run pytest`: 54 offline tests.
 - `uv run python -m evals.run`: recall@5 and MRR for BM25 vs hybrid vs hybrid + rerank.
 - The git history, which shows the build order.
