@@ -1,0 +1,112 @@
+[
+  {
+    "service": "crestpay-gateway",
+    "display_name": "CrestPay API Gateway",
+    "description": "External-facing API gateway that terminates TLS and applies rate limiting for all CrestPay payment traffic before forwarding to the payment orchestrator.",
+    "owner_team": "Payments Platform",
+    "tier": 1,
+    "status": "operational",
+    "on_call_employee_id": "E1002",
+    "dependencies": ["payment-orchestrator", "event-bus"],
+    "runbook": "RB-001"
+  },
+  {
+    "service": "payment-orchestrator",
+    "display_name": "Payment Orchestrator",
+    "description": "Coordinates the authorisation flow for card, instant transfer, and QR payments, including fraud checks, card switch calls, and ledger writes.",
+    "owner_team": "Payments Engineering",
+    "tier": 1,
+    "status": "operational",
+    "on_call_employee_id": "E1008",
+    "dependencies": ["payments-ledger-db", "northgate-card-switch", "fraud-engine"],
+    "runbook": "RB-001"
+  },
+  {
+    "service": "payments-ledger-db",
+    "display_name": "Payments Ledger Database",
+    "description": "Primary transactional database recording the outcome of every payment processed through the payments platform.",
+    "owner_team": "Platform Data",
+    "tier": 1,
+    "status": "operational",
+    "on_call_employee_id": "E1006",
+    "dependencies": [],
+    "runbook": "RB-002"
+  },
+  {
+    "service": "northgate-card-switch",
+    "display_name": "NorthGate Card Switch (external)",
+    "description": "Third-party card network switch used for external card authorisation. Hosted and operated by NorthGate, outside Crestline's infrastructure.",
+    "owner_team": "Vendor - Payments",
+    "tier": 1,
+    "status": "operational",
+    "on_call_employee_id": "E1016",
+    "dependencies": [],
+    "runbook": "RB-004"
+  },
+  {
+    "service": "mobile-banking-api",
+    "display_name": "Mobile Banking API",
+    "description": "Backend API serving the CrestLine mobile banking app, including authentication, account overview, and transfers.",
+    "owner_team": "Digital Banking",
+    "tier": 1,
+    "status": "operational",
+    "on_call_employee_id": "E1011",
+    "dependencies": ["core-banking", "event-bus"],
+    "runbook": null
+  },
+  {
+    "service": "atm-network",
+    "display_name": "ATM Network Switch",
+    "description": "Switching infrastructure connecting Crestline ATM terminals nationwide to core banking for cash withdrawal and balance enquiry transactions.",
+    "owner_team": "Retail Channels",
+    "tier": 2,
+    "status": "operational",
+    "on_call_employee_id": "E1015",
+    "dependencies": ["core-banking"],
+    "runbook": null
+  },
+  {
+    "service": "core-banking",
+    "display_name": "Core Banking System",
+    "description": "System of record for customer accounts, balances, and ledger postings outside the dedicated payments ledger.",
+    "owner_team": "Core Banking Integration",
+    "tier": 1,
+    "status": "operational",
+    "on_call_employee_id": "E1012",
+    "dependencies": [],
+    "runbook": null
+  },
+  {
+    "service": "event-bus",
+    "display_name": "Payments Event Bus",
+    "description": "Internal event streaming platform used to propagate transaction state changes to downstream consumers such as notifications and reconciliation.",
+    "owner_team": "Platform Engineering",
+    "tier": 2,
+    "status": "operational",
+    "on_call_employee_id": "E1017",
+    "dependencies": [],
+    "runbook": null
+  },
+  {
+    "service": "fraud-engine",
+    "display_name": "Real-time Fraud Detection Engine",
+    "description": "Synchronous fraud scoring service consulted by the payment orchestrator before authorising card, instant transfer, and QR transactions.",
+    "owner_team": "Risk Engineering",
+    "tier": 2,
+    "status": "operational",
+    "on_call_employee_id": "E1017",
+    "dependencies": ["event-bus"],
+    "runbook": null
+  },
+  {
+    "service": "internet-banking",
+    "display_name": "Internet Banking Platform",
+    "description": "Web-based banking platform for account management, transfers, and bill payments, using a separate authentication path from mobile banking.",
+    "owner_team": "Digital Banking",
+    "tier": 2,
+    "status": "operational",
+    "on_call_employee_id": "E1019",
+    "dependencies": ["core-banking"],
+    "runbook": null
+  }
+]

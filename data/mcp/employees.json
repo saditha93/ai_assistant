@@ -1,0 +1,222 @@
+[
+  {
+    "employee_id": "E1001",
+    "name": "Nimal Perera",
+    "title": "Head of Payments Engineering",
+    "department": "payments",
+    "email": "nimal.perera@crestline.example",
+    "phone_ext": "1001",
+    "location": "Colombo HQ",
+    "manager_id": null,
+    "on_call_for": []
+  },
+  {
+    "employee_id": "E1002",
+    "name": "Priyanka Jayasuriya",
+    "title": "Site Reliability Engineer",
+    "department": "platform",
+    "email": "priyanka.jayasuriya@crestline.example",
+    "phone_ext": "1002",
+    "location": "Colombo HQ",
+    "manager_id": "E1003",
+    "on_call_for": ["crestpay-gateway"]
+  },
+  {
+    "employee_id": "E1003",
+    "name": "Dinesh Wickramasinghe",
+    "title": "Platform Engineering Manager",
+    "department": "platform",
+    "email": "dinesh.wickramasinghe@crestline.example",
+    "phone_ext": "1003",
+    "location": "Colombo HQ",
+    "manager_id": null,
+    "on_call_for": []
+  },
+  {
+    "employee_id": "E1004",
+    "name": "Ruwan Gunasekara",
+    "title": "Payments Engineer",
+    "department": "payments",
+    "email": "ruwan.gunasekara@crestline.example",
+    "phone_ext": "1004",
+    "location": "Colombo HQ",
+    "manager_id": "E1001",
+    "on_call_for": ["northgate-card-switch"]
+  },
+  {
+    "employee_id": "E1005",
+    "name": "Amali Fernando",
+    "title": "Chief Information Security Officer",
+    "department": "security",
+    "email": "amali.fernando@crestline.example",
+    "phone_ext": "1005",
+    "location": "Colombo HQ",
+    "manager_id": null,
+    "on_call_for": []
+  },
+  {
+    "employee_id": "E1006",
+    "name": "Kasun Rajapaksa",
+    "title": "Database Engineer",
+    "department": "platform",
+    "email": "kasun.rajapaksa@crestline.example",
+    "phone_ext": "1006",
+    "location": "Kandy",
+    "manager_id": "E1003",
+    "on_call_for": ["payments-ledger-db"]
+  },
+  {
+    "employee_id": "E1007",
+    "name": "Chamari Silva",
+    "title": "SRE Lead / Incident Commander",
+    "department": "platform",
+    "email": "chamari.silva@crestline.example",
+    "phone_ext": "1007",
+    "location": "Colombo HQ",
+    "manager_id": "E1003",
+    "on_call_for": []
+  },
+  {
+    "employee_id": "E1008",
+    "name": "Thilina Bandara",
+    "title": "Payments Engineer",
+    "department": "payments",
+    "email": "thilina.bandara@crestline.example",
+    "phone_ext": "1008",
+    "location": "Colombo HQ",
+    "manager_id": "E1001",
+    "on_call_for": ["payment-orchestrator"]
+  },
+  {
+    "employee_id": "E1009",
+    "name": "Michael Chen",
+    "title": "Principal Architect",
+    "department": "platform",
+    "email": "michael.chen@crestline.example",
+    "phone_ext": "1009",
+    "location": "Remote",
+    "manager_id": null,
+    "on_call_for": []
+  },
+  {
+    "employee_id": "E1010",
+    "name": "Sarah O'Connell",
+    "title": "Product Manager, CrestPay",
+    "department": "payments",
+    "email": "sarah.oconnell@crestline.example",
+    "phone_ext": "1010",
+    "location": "Remote",
+    "manager_id": null,
+    "on_call_for": []
+  },
+  {
+    "employee_id": "E1011",
+    "name": "Anjali Mendis",
+    "title": "Mobile Banking Engineer",
+    "department": "digital",
+    "email": "anjali.mendis@crestline.example",
+    "phone_ext": "1011",
+    "location": "Colombo HQ",
+    "manager_id": "E1019",
+    "on_call_for": ["mobile-banking-api"]
+  },
+  {
+    "employee_id": "E1012",
+    "name": "Suresh Kumar",
+    "title": "Core Banking Integration Lead",
+    "department": "platform",
+    "email": "suresh.kumar@crestline.example",
+    "phone_ext": "1012",
+    "location": "Colombo HQ",
+    "manager_id": "E1003",
+    "on_call_for": ["core-banking"]
+  },
+  {
+    "employee_id": "E1013",
+    "name": "Fathima Rizwan",
+    "title": "Security Architect",
+    "department": "security",
+    "email": "fathima.rizwan@crestline.example",
+    "phone_ext": "1013",
+    "location": "Colombo HQ",
+    "manager_id": "E1005",
+    "on_call_for": []
+  },
+  {
+    "employee_id": "E1014",
+    "name": "Lakshan Perera",
+    "title": "Retail Banking Operations Manager",
+    "department": "retail",
+    "email": "lakshan.perera@crestline.example",
+    "phone_ext": "1014",
+    "location": "Galle",
+    "manager_id": null,
+    "on_call_for": []
+  },
+  {
+    "employee_id": "E1015",
+    "name": "David Fernandes",
+    "title": "ATM Network Engineer",
+    "department": "retail",
+    "email": "david.fernandes@crestline.example",
+    "phone_ext": "1015",
+    "location": "Kandy",
+    "manager_id": "E1014",
+    "on_call_for": ["atm-network"]
+  },
+  {
+    "employee_id": "E1016",
+    "name": "James O'Brien",
+    "title": "Vendor Relationship Manager",
+    "department": "payments",
+    "email": "james.obrien@crestline.example",
+    "phone_ext": "1016",
+    "location": "Remote",
+    "manager_id": "E1001",
+    "on_call_for": []
+  },
+  {
+    "employee_id": "E1017",
+    "name": "Chathura Abeysekara",
+    "title": "Platform SRE",
+    "department": "platform",
+    "email": "chathura.abeysekara@crestline.example",
+    "phone_ext": "1017",
+    "location": "Colombo HQ",
+    "manager_id": "E1003",
+    "on_call_for": ["event-bus", "fraud-engine"]
+  },
+  {
+    "employee_id": "E1018",
+    "name": "Ganesh Moorthy",
+    "title": "Head of Risk",
+    "department": "risk",
+    "email": "ganesh.moorthy@crestline.example",
+    "phone_ext": "1018",
+    "location": "Colombo HQ",
+    "manager_id": null,
+    "on_call_for": []
+  },
+  {
+    "employee_id": "E1019",
+    "name": "Malith Jayawardena",
+    "title": "Digital Banking Lead",
+    "department": "digital",
+    "email": "malith.jayawardena@crestline.example",
+    "phone_ext": "1019",
+    "location": "Colombo HQ",
+    "manager_id": null,
+    "on_call_for": ["internet-banking"]
+  },
+  {
+    "employee_id": "E1020",
+    "name": "Chandima Ratnayake",
+    "title": "Product Owner, QR Payments",
+    "department": "payments",
+    "email": "chandima.ratnayake@crestline.example",
+    "phone_ext": "1020",
+    "location": "Colombo HQ",
+    "manager_id": "E1010",
+    "on_call_for": []
+  }
+]
