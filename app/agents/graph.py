@@ -102,7 +102,7 @@ def build_graph(checkpointer=None, store=None):
     g.add_node("load_memory", node("load_memory", load_memory, timeout=10))
     g.add_node("supervisor", node("supervisor", supervisor, timeout=45))
     g.add_node("retrieval_agent", node("retrieval_agent", retrieval_agent, timeout=45, pops_step=True))
-    g.add_node("research_agent", node("research_agent", research_agent, timeout=200, pops_step=True))
+    g.add_node("research_agent", node("research_agent", research_agent, timeout=240, pops_step=True))
     g.add_node("tool_agent", node("tool_agent", tool_agent, timeout=90, pops_step=True))
     g.add_node("approve_action", node("approve_action", approve_action, timeout=30,
                                       on_error=lambda s, e: {"pending_action": None}))

@@ -44,6 +44,7 @@ MAX_SUBCALLS = 20
 MAX_DEPTH = 2
 DEADLINE_S = 170
 MAX_PROMPT_CHARS = 12000
+MAX_EVIDENCE = 80  # every section read can be cited, so all of them must reach the validator
 
 ROOT_PROMPT = """You are the research agent of {brand}. You answer a research task by writing Python, one step
 at a time. You cannot see document text directly; you explore it with these functions:
@@ -63,7 +64,8 @@ at a time. You cannot see document text directly; you explore it with these func
 
 Rules:
 - Reply with exactly one ```python block per turn. You only see what you print(), truncated to 2000 chars.
-- Variables persist between turns. Counter, defaultdict, mean and median are available. No imports.
+- Variables persist between turns. Counter, defaultdict, mean and median are available.
+- Not allowed: import, try/except, with, class. Write straight-line code with loops and comprehensions.
 - Read only the sections you need. Do not print sections to read them yourself; pass their text to
   llm_batch / llm_query and print the short results. Keep each prompt under {max_prompt} characters.
 - Budget: {max_cells} turns, {max_subcalls} llm_query/sub_agent calls in total.
@@ -201,10 +203,17 @@ class ResearchSession:
                 feedback += "\n\nNext turn is your last: aggregate what you have and call FINAL(answer)."
             messages.append(HumanMessage(f"Output:\n{feedback}"))
 
+        mode = "rlm"
         if not final:
-            raise RuntimeError("research did not call FINAL within the turn budget")
+            # Out of turns. The work so far is in the conversation, so ask for the answer
+            # directly instead of throwing it away.
+            self.emit({"type": "research", "status": "forced_final", "depth": depth})
+            messages.append(HumanMessage("You are out of turns. Reply now with the final answer in markdown, "
+                                         "citing [chunk_id]s from the sections you read. No code."))
+            final["answer"] = model.invoke(messages).text
+            mode = "rlm_forced_final"
         self.emit({"type": "research", "status": "final", "depth": depth})
-        return {"answer": final["answer"], "cells": cell, "mode": "rlm"}
+        return {"answer": final["answer"], "cells": cell, "mode": mode}
 
     @traceable(name="rlm_cell", run_type="tool")
     def _run_cell(self, code: str, env: dict) -> dict:
@@ -274,4 +283,4 @@ async def research_agent(state: dict, runtime: Runtime[User]) -> dict:
         update["errors"] = [{"node": "research_agent", "error": str(exc)[:200]}]
     result["subcalls"] = session.subcalls
     result["sections_read"] = len(session.touched)
-    return update | {"research": result, "evidence": list(session.touched.values())[:25]}
+    return update | {"research": result, "evidence": list(session.touched.values())[:MAX_EVIDENCE]}

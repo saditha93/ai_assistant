@@ -58,7 +58,7 @@ def check_code(code: str) -> ast.Module:
         raise SandboxError(f"Syntax error: {exc.msg} (line {exc.lineno})") from exc
     for node in ast.walk(tree):
         if not isinstance(node, ALLOWED_NODES):
-            raise SandboxError(f"'{type(node).__name__}' is not allowed")
+            raise SandboxError(f"'{type(node).__name__.lower()}' statements/expressions are not allowed here")
         if isinstance(node, ast.Attribute) and (node.attr.startswith("_") or node.attr in BLOCKED_ATTRS):
             raise SandboxError(f"Access to '{node.attr}' is not allowed")
         if isinstance(node, ast.Name) and node.id.startswith("__"):
