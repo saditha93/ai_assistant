@@ -37,7 +37,7 @@ class Settings(BaseSettings):
     langsmith_project: str = "crestline-assistant"
 
     # Auth and rate limiting
-    jwt_secret: str = "dev-only-secret-change-me"
+    jwt_secret: str = "dev-only-secret-change-me-before-deploying"
     jwt_ttl_minutes: int = 480
     # role -> (bucket capacity, tokens refilled per second)
     rate_limits: dict[str, tuple[int, float]] = {
