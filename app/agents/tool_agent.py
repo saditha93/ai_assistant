@@ -65,7 +65,8 @@ async def tool_agent(state: dict, runtime: Runtime[User]) -> dict:
 
         outcomes = await asyncio.gather(*(execute_tool(ctx, c["name"], c["args"]) for c in reads))
         for call, outcome in zip(reads, outcomes, strict=True):
-            messages.append(ToolMessage(json.dumps(outcome, default=str)[:4000], tool_call_id=call["id"]))
+            messages.append(ToolMessage(json.dumps(outcome, default=str)[:4000], tool_call_id=call["id"],
+                                        name=call["name"]))
 
         if writes:
             write = writes[0]

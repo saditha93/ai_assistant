@@ -78,10 +78,7 @@ async def _knowledge_search(ctx: ToolContext, args: KnowledgeSearchArgs) -> dict
 
 
 async def _python_analysis(ctx: ToolContext, args: PythonAnalysisArgs) -> dict:
-    data = {
-        "evidence": [{k: v for k, v in c.items() if k not in ("values",)} for c in ctx.evidence],
-        "tool_results": [r.get("result") for r in ctx.results if r.get("ok")],
-    }
+    data = {"evidence": ctx.evidence, "tool_results": [r["result"] for r in ctx.results if r["ok"]]}
     result = await asyncio.to_thread(run_code, args.code, {"data": data}, 10)
     if not result["ok"]:
         raise ValueError(result["error"])
