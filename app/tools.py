@@ -1,16 +1,3 @@
-"""Every tool the agents can call, and the single function that runs them.
-
-Tools come from two places:
-  * local tools defined here (knowledge search, python analysis, audit log)
-  * the enterprise MCP server (employee directory, service catalog, incident records,
-    create incident), loaded over streamable HTTP
-
-execute_tool() is the only way a tool runs. It checks the role, validates arguments,
-applies a timeout, writes an audit entry and reports progress to the activity panel.
-So even if the LLM is tricked into asking for a tool it was never shown, the call is
-refused here.
-"""
-
 import asyncio
 import datetime as dt
 import json
@@ -41,11 +28,9 @@ class ToolContext:
     user: User
     store: BaseStore | None
     emit: Callable[[dict], None]
-    evidence: list[dict] = field(default_factory=list)  # chunks found by knowledge_search this turn
-    results: list[dict] = field(default_factory=list)  # earlier tool outputs, input for python_analysis
+    evidence: list[dict] = field(default_factory=list)
+    results: list[dict] = field(default_factory=list)
 
-
-# ---- local tools ----
 
 class KnowledgeSearchArgs(BaseModel):
     query: str = Field(min_length=2, max_length=300, description="What to search for")
@@ -101,8 +86,6 @@ LOCAL_TOOLS = {
 }
 
 
-# ---- MCP tools ----
-
 _mcp_cache: dict = {"tools": {}, "loaded_at": 0.0}
 
 
@@ -151,8 +134,6 @@ async def _call_mcp(tool: BaseTool, args: dict) -> object:
             parsed.append(text)
     return parsed[0] if len(parsed) == 1 else parsed
 
-
-# ---- binding and execution ----
 
 async def tools_for(user: User) -> tuple[list, list[str]]:
     """Tool definitions to bind to the LLM for this user, plus names of tools that exist
@@ -221,5 +202,5 @@ async def execute_tool(ctx: ToolContext, name: str, args: dict) -> dict:
 
 
 async def _hang(coro):
-    coro.close()  # the real call never starts; we only simulate a tool that does not answer
+    coro.close()
     await asyncio.sleep(settings.tool_timeout_s + 5)

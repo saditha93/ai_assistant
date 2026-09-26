@@ -6,8 +6,6 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 ROOT = Path(__file__).resolve().parent.parent
 
-# LangSmith and LangGraph read their settings (LANGSMITH_*, LANGGRAPH_STRICT_MSGPACK) from
-# the real environment, so .env has to be loaded into os.environ, not only into Settings.
 load_dotenv(ROOT / ".env")
 
 
@@ -23,8 +21,6 @@ class Settings(BaseSettings):
     gemini_fallback_model: str = "gemini-3.5-flash-lite"
     embed_model: str = "gemini-embedding-001"
     embed_dim: int = 768
-    # Gemini 3 "thinking" depth. low keeps multi-step agents responsive; answers are grounded in
-    # retrieved text, so deep reasoning buys little here.
     gemini_thinking_level: str = "low"
     llm_timeout_s: float = 30
 
@@ -33,22 +29,19 @@ class Settings(BaseSettings):
     pinecone_index: str = "crestline-kb"
     pinecone_region: str = "us-east-1"
     rerank_model: str = "bge-reranker-v2-m3"
-    hybrid_alpha: float = 0.6  # weight of the dense score; sparse gets 1 - alpha
+    hybrid_alpha: float = 0.6
     retrieval_top_k: int = 6
-    min_rerank_score: float = 0.15  # below this the retrieval agent rewrites the query once
+    min_rerank_score: float = 0.15
 
     # MCP
     mcp_url: str = "http://localhost:8001/mcp"
     tool_timeout_s: float = 10
 
-    # LangSmith reads LANGSMITH_* itself; we only need to know whether it is on.
     langsmith_api_key: str = ""
     langsmith_project: str = "crestline-assistant"
 
-    # Auth and rate limiting
     jwt_secret: str = "dev-only-secret-change-me-before-deploying"
     jwt_ttl_minutes: int = 480
-    # role -> (bucket capacity, tokens refilled per second)
     rate_limits: dict[str, tuple[int, float]] = {
         "viewer": (10, 0.2),
         "analyst": (20, 0.5),
@@ -75,4 +68,4 @@ class Settings(BaseSettings):
 settings = Settings()
 
 if not settings.has_langsmith:
-    os.environ["LANGSMITH_TRACING"] = "false"  # avoid "missing API key" warnings on every run
+    os.environ["LANGSMITH_TRACING"] = "false"

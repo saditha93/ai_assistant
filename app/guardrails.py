@@ -1,21 +1,12 @@
-"""Input and output safety checks.
-
-Everything here is deterministic (regex and simple rules) so it is fast, testable and
-cannot itself be prompt-injected. The LLM prompts add a second layer (documents are
-passed as data inside <document> tags and the system prompt tells the model to never
-follow instructions found there), but these checks do not rely on the model obeying.
-"""
-
 import re
 import secrets
 
 from app.config import settings
 
 MAX_MESSAGE_CHARS = 4000
-BLOCK_AT = 0.6  # risk score at which a request is refused
-FLAG_AT = 0.3  # risk score at which we continue but show a warning
+BLOCK_AT = 0.6
+FLAG_AT = 0.3
 
-# (pattern, weight, label). Weights add up; one strong signal is enough to block.
 INJECTION_PATTERNS = [
     (r"\b(ignore|disregard|forget|override)\b.{0,30}\b(previous|prior|above|earlier|all|system|your)\b"
      r".{0,20}\b(instructions?|rules|prompts?|guidelines)", 0.7, "instruction_override"),
@@ -36,8 +27,6 @@ INJECTION_PATTERNS = [
 ]
 _COMPILED = [(re.compile(p, re.IGNORECASE | re.DOTALL), w, label) for p, w, label in INJECTION_PATTERNS]
 
-# A random marker placed in the system prompt. If it ever shows up in an answer, the
-# model has been talked into leaking its instructions.
 CANARY = f"CRST-{secrets.token_hex(4)}"
 
 CONTROL_CHARS = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
@@ -61,8 +50,6 @@ def check_user_input(text: str) -> dict:
         return {"allowed": False, "reason": "possible prompt injection", "text": cleaned, **scan}
     return {"allowed": True, "flagged": scan["score"] >= FLAG_AT, "text": cleaned, **scan}
 
-
-# ---- retrieved content (indirect prompt injection) ----
 
 _SENTENCES = re.compile(r"(?<=[.!?])\s+|\n")
 MAX_CHUNK_CHARS = 4000
@@ -103,7 +90,6 @@ def format_evidence(chunks: list[dict]) -> str:
     return "\n\n".join(blocks)
 
 
-# ---- output checks ----
 
 CARD_RE = re.compile(r"\b\d(?:[ -]?\d){12,18}\b")
 NIC_RE = re.compile(r"\b(?:\d{9}[vVxX]|(?:19|20)\d{10})\b")
@@ -244,7 +230,6 @@ def validate_answer(answer: str, evidence_ids: set[str], needs_citations: bool) 
     brand = [label for rx, label in _BRAND if rx.search(text)]
     checks.append({"check": "brand_voice", "passed": not brand, "detail": brand})
 
-    # Redaction and link stripping fix the text themselves, so they never force a retry.
     must_pass = {"not_empty", "length", "system_prompt_leak", "citations_exist", "has_citations", "brand_voice"}
     failed = [c["check"] for c in checks if not c["passed"] and c["check"] in must_pass]
     return {"passed": not failed, "failed": failed, "checks": checks, "answer": text, "citations": valid_ids}

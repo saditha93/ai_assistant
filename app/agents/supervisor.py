@@ -1,14 +1,3 @@
-"""Supervisor agent: understands the request and decides which agents work on it.
-
-One structured LLM call returns the intent, a standalone version of the question (using
-conversation memory to resolve "it", "that incident" ...), sub-tasks, and an ordered list
-of worker steps with search scope. A plain function then routes through those steps,
-so we pay for one planning call instead of a supervisor LLM call between every step.
-
-The plan is then checked against the user's role. The LLM may suggest deep research to a
-viewer; the permission check removes it and tells the user why.
-"""
-
 import asyncio
 import datetime as dt
 import re
@@ -81,9 +70,6 @@ def enforce_permissions(plan: dict, user: User) -> tuple[dict, list[str]]:
     plan = {**plan, "steps": steps[:3], "namespaces": plan.get("namespaces") or NAMESPACES}
     return plan, notes
 
-
-# ---- keyword planner, used when the LLM is unavailable ----
-
 RESEARCH_RE = re.compile(r"\b(summari[sz]e (all|every)|all (the )?(outages?|incidents?)|recurring|trends?|patterns?|"
                          r"across|compare|root causes)\b", re.IGNORECASE)
 TOOLS_RE = re.compile(r"\b(who (is|owns)|owner of|on[- ]call|contact|phone|email|employees?|directory|status of|"
@@ -136,14 +122,12 @@ async def supervisor(state: dict, runtime: Runtime[User]) -> dict:
             + f"\n\nRequest: {question}"
         )
         try:
-            # Shorter than the node timeout, so a slow or rate-limited model falls back to the
-            # keyword plan here instead of failing the whole node.
             async with asyncio.timeout(PLAN_TIMEOUT_S):
                 result = await llm(name="supervisor_plan", schema=Plan).ainvoke([
                     SystemMessage(SYSTEM.format(brand=settings.brand_name, today=dt.date.today().isoformat())),
                     HumanMessage(prompt),
                 ])
-            plan = result.model_dump(mode="json")  # dates become YYYY-MM-DD strings
+            plan = result.model_dump(mode="json")
         except Exception as exc:
             reason = "timed out" if isinstance(exc, TimeoutError) else str(exc)[:160]
             errors.append({"node": "supervisor", "error": f"LLM planner failed ({reason}); used keyword rules"})

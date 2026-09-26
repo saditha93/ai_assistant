@@ -1,19 +1,3 @@
-"""Hybrid search over the knowledge base.
-
-Normal path (Pinecone):
-  1. Embed the query once (dense, Gemini) and encode it with BM25 (sparse).
-  2. Query every selected namespace in parallel. Each query carries both vectors, with
-     the dense one scaled by alpha and the sparse one by (1 - alpha), so Pinecone's
-     dot product is directly `alpha * dense + (1 - alpha) * sparse`.
-  3. Rerank the merged candidates with Pinecone's hosted cross-encoder.
-
-Access control is part of the metadata filter and is built from the verified user,
-never from anything the LLM wrote.
-
-If Pinecone or the embedding call fails, we fall back to local BM25 over the same
-chunks, and say so in the result so the UI and the answer can mention it.
-"""
-
 import asyncio
 import datetime as dt
 from functools import lru_cache
@@ -30,7 +14,6 @@ from app.resilience import DependencyDown, pinecone_breaker
 from app.retrieval.bm25 import BM25
 from app.retrieval.documents import NAMESPACES, index_text, load_corpus
 
-# Pinecone's vectors API (values / sparse_values) addresses these reserved field names.
 DENSE_FIELD, SPARSE_FIELD = "_values", "_sparse_values"
 METADATA_FIELDS = ("doc_id", "title", "section", "text", "document_type", "department",
                    "access_level", "created_date", "created_ts", "owner", "namespace")
@@ -103,8 +86,6 @@ async def _pinecone_search(query: str, namespaces: list[str], flt: dict, k: int)
     hits = []
     for response in responses:
         for m in response.matches:
-            # Recompute each part of the score so the activity panel can show how the
-            # final hybrid score was made.
             dense_score = sum(a * b for a, b in zip(dense, m.values or [], strict=False))
             sparse_values = m.sparse_values and {"indices": m.sparse_values.indices, "values": m.sparse_values.values}
             sparse_score = _sparse_dot(sparse, sparse_values)

@@ -1,13 +1,3 @@
-"""Load the markdown knowledge base into Pinecone.
-
-    uv run python -m app.retrieval.ingest            # create index if needed, upsert all chunks
-    uv run python -m app.retrieval.ingest --recreate # drop and rebuild the index
-
-Each chunk becomes one record with a dense vector (Gemini), a sparse vector (BM25) and
-metadata used for filtering and attribution. Record ids are stable (`doc_id#n`), so
-running this again updates records in place.
-"""
-
 import argparse
 import asyncio
 from collections import defaultdict
@@ -33,8 +23,6 @@ async def ensure_index(pc: AsyncPinecone, recreate: bool) -> None:
         print(f"Creating hybrid index {settings.pinecone_index}")
         await pc.indexes.create(
             name=settings.pinecone_index,
-            # Dense with dotproduct (our vectors are unit length, so this is cosine) plus a
-            # sparse field. A hybrid index must declare the sparse field at creation.
             schema={"fields": {
                 DENSE_FIELD: {"type": "dense_vector", "dimension": settings.embed_dim, "metric": "dotproduct"},
                 SPARSE_FIELD: {"type": "sparse_vector"},
@@ -71,8 +59,7 @@ async def ingest(recreate: bool = False) -> None:
         await index.close()
     print(f"Upserted {len(chunks)} chunks from {len({c['doc_id'] for c in chunks})} documents.")
 
-    # Smoke test: one query through the same code path the agents use.
-    await asyncio.sleep(5)  # freshly upserted records take a moment to become searchable
+    await asyncio.sleep(5)
     admin = User("ingest", "Ingest check", "admin", "platform")
     result = await hybrid_search("payment gateway timeout root cause", admin)
     print(f"Smoke query mode={result['mode']} reranked={result['reranked']}")

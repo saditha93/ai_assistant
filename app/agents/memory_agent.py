@@ -1,5 +1,3 @@
-"""Memory loader and saver nodes. The design is described in app/memory.py."""
-
 from langchain_core.messages import HumanMessage
 from langgraph.runtime import Runtime
 
@@ -37,7 +35,7 @@ async def _summarise(summary: str, older: list) -> str:
             reply = await llm(name="memory_summary", light=True).ainvoke(
                 [HumanMessage(SUMMARY_PROMPT.format(summary=summary or "(empty)", turns=turns))])
             return reply.text.strip()
-        except Exception:  # a failed summary must not lose the turn; fall through to truncation
+        except Exception:
             pass
     return f"{summary}\n{turns}"[-1500:]
 

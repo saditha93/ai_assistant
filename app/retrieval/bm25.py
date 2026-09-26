@@ -1,15 +1,3 @@
-"""A small BM25 implementation.
-
-We use it for three things:
-  * sparse vectors for Pinecone hybrid search (encode_doc / encode_query),
-  * local keyword search when Pinecone is unavailable,
-  * ranking a user's past questions for long-term memory.
-
-Pinecone needs integer token ids, so tokens are hashed with crc32 (stable across
-processes, unlike Python's hash()). Query weights are IDF values normalised to sum
-to 1, which keeps sparse scores in a similar range to cosine similarity.
-"""
-
 import math
 import re
 import zlib
@@ -24,7 +12,6 @@ TOKEN_RE = re.compile(r"[a-z0-9]+")
 
 
 def _stem(token: str) -> str:
-    # Plural stripping only; swap in a real stemmer if recall on verb forms matters
     if len(token) > 4 and token.endswith("ies"):
         return token[:-3] + "y"
     if len(token) > 3 and token.endswith("s") and not token.endswith("ss"):

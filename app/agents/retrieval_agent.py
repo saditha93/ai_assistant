@@ -1,11 +1,3 @@
-"""Retrieval agent: RAG over the knowledge base.
-
-Runs hybrid search with the scope the supervisor chose. If the results look weak (nothing
-found, or the reranker scores the best passage low), it rewrites the query once and
-searches again without the supervisor's filters. This "corrective" step catches plans
-that filtered too narrowly or questions phrased very differently from the documents.
-"""
-
 from langchain_core.messages import HumanMessage
 from langgraph.runtime import Runtime
 
@@ -59,7 +51,7 @@ async def retrieval_agent(state: dict, runtime: Runtime[User]) -> dict:
                 prompt = HumanMessage(REWRITE_PROMPT.format(query=query))
                 reply = await llm(name="query_rewrite", light=True).ainvoke([prompt])
                 new_query = reply.text.strip().strip('"')[:300] or query
-            except Exception as exc:  # keep the original query; the first results are still usable
+            except Exception as exc:
                 notes.append(f"Query rewrite failed ({str(exc)[:80]}).")
         emit({"type": "retrieval", "status": "retrying", "query": new_query,
               "reason": "weak results; rewriting the query and searching all namespaces without filters"})

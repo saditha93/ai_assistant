@@ -1,10 +1,3 @@
-"""Streamlit front end: chat on the left, live agent activity on the right.
-
-    uv run streamlit run ui/app.py
-
-Talks to the FastAPI backend only (API_URL); it holds no business logic.
-"""
-
 import json
 import os
 import uuid
@@ -19,8 +12,8 @@ state = st.session_state
 state.setdefault("token", None)
 state.setdefault("user", None)
 state.setdefault("session_id", uuid.uuid4().hex[:12])
-state.setdefault("messages", [])  # {"role", "content", "citations", "run_id", "notes"}
-state.setdefault("activity", [])  # events of the latest turn, replayed after reruns
+state.setdefault("messages", [])
+state.setdefault("activity", [])
 state.setdefault("pending_approval", None)
 state.setdefault("feedback_sent", set())
 

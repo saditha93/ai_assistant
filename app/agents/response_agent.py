@@ -1,14 +1,3 @@
-"""Response agent (writes the answer) and validator (checks it before the user sees it).
-
-The responder gets everything the other agents gathered: evidence chunks, research
-findings, tool results, memory and notes (degraded services, permission limits). Its
-tokens are streamed to the UI.
-
-The validator runs the deterministic output checks from app.guardrails. If a check that
-matters fails (hallucinated citation, missing citations, prompt leak, off-brand wording)
-it sends the draft back once with the reasons. If the second draft also fails, the user
-gets a safe answer built directly from the evidence instead of a wrong one.
-"""
 
 import datetime as dt
 import json

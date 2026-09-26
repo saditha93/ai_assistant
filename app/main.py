@@ -1,17 +1,3 @@
-"""FastAPI backend.
-
-    uv run uvicorn app.main:app --port 8000
-
-Chat answers stream as Server-Sent Events:
-  start              run id and session id
-  activity           everything the agents do (nodes, plan, retrieval, tools, memory, validation)
-  token              answer text as it is generated (already passed through redaction filters)
-  answer_reset       (inside activity) the validator rejected the draft; the UI clears it
-  approval_required  a write action is waiting for the user's decision
-  answer             the validated final answer with citations
-  error / done
-"""
-
 import re
 import uuid
 from collections.abc import AsyncIterator
@@ -75,9 +61,6 @@ async def unhandled(request: Request, exc: Exception):
     log.exception("unhandled_error")
     return JSONResponse({"detail": "Internal error. Please try again."}, status_code=500)
 
-
-# ---- request models ----
-
 class LoginRequest(BaseModel):
     username: str = Field(max_length=50)
     password: str = Field(max_length=100)
@@ -98,9 +81,6 @@ class FeedbackRequest(BaseModel):
     score: int = Field(ge=0, le=1)
     comment: str | None = Field(None, max_length=1000)
 
-
-# ---- auth ----
-
 @app.post("/auth/login")
 async def login(body: LoginRequest):
     user = authenticate(body.username, body.password)
@@ -117,8 +97,6 @@ async def me(user: User = Depends(current_user)):
 # ---- chat ----
 
 def _config(user: User, session_id: str, run_id: uuid.UUID) -> dict:
-    # thread_id is built here from the verified user, so one user can never read or resume
-    # another user's conversation by guessing a session id.
     thread_id = f"{user.username}:{session_id}"
     return {
         "configurable": {"thread_id": thread_id},
@@ -162,7 +140,7 @@ async def stream_turn(graph, payload, user: User, session_id: str) -> AsyncItera
             kind, data = part["type"], part["data"]
             if kind == "custom":
                 if data.get("type") == "answer_reset":
-                    buffer = ""  # drop the unsent tail of the rejected draft
+                    buffer = ""
                 yield ServerSentEvent(event="activity", data=data)
             elif kind == "messages":
                 chunk, meta = data
@@ -235,9 +213,6 @@ async def feedback(body: FeedbackRequest, request: Request, user: User = Depends
     await memory.save_feedback(request.app.state.store, user, str(body.run_id), body.score, body.comment)
     sent = send_langsmith_feedback(str(body.run_id), body.score, body.comment)
     return {"stored": True, "sent_to_langsmith": sent}
-
-
-# ---- operations ----
 
 @app.get("/health")
 async def health():

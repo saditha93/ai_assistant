@@ -1,11 +1,3 @@
-"""Enterprise data MCP server (dummy data).
-
-Exposes the employee directory, service catalog and incident records that the assistant's
-tool agent can call. Runs as its own process so it can fail independently:
-
-    uv run python -m mcp_server.server      # http://localhost:8001/mcp
-"""
-
 import datetime as dt
 import json
 import os
@@ -26,8 +18,6 @@ mcp = FastMCP(
     port=int(os.getenv("MCP_PORT", "8001")),
     stateless_http=True,
     json_response=True,
-    # Inside docker compose the API reaches us as http://mcp:8001, so the default
-    # localhost-only Host header check would reject it.
     transport_security=TransportSecuritySettings(enable_dns_rebinding_protection=False),
 )
 
@@ -91,7 +81,7 @@ def create_incident(title: str, service: str, severity: Severity, description: s
         "resolved_at": None, "root_cause_category": None, "customers_affected": 0, "duration_minutes": 0,
         "description": description[:2000],
     }
-    INCIDENTS.append(record)  # in memory only; restarting the server resets the demo data
+    INCIDENTS.append(record)
     return record
 
 

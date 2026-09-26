@@ -1,23 +1,14 @@
-"""Circuit breakers for external dependencies, plus fault switches for the demo.
-
-Retries already happen inside the clients (Gemini max_retries, Pinecone's built-in retry),
-so this module only adds what they don't: a timeout per call and a breaker that stops us
-from hammering a dependency that is clearly down. While a breaker is open, callers get a
-DependencyDown error immediately and fall back to their degraded path.
-"""
-
 import asyncio
 import time
 from collections.abc import Awaitable, Callable
 from typing import Any
 
-# Admins can flip these from the UI to show graceful degradation live.
 FAULTS = {
-    "llm_primary": False,  # primary Gemini model fails -> fallback model answers
-    "llm_all": False,  # every LLM call fails -> extractive answer from retrieved passages
-    "pinecone": False,  # vector DB down -> local keyword search
-    "mcp": False,  # MCP server down -> tools reported unavailable
-    "tool_timeout": False,  # tools hang -> per-call timeout fires
+    "llm_primary": False,
+    "llm_all": False,
+    "pinecone": False,
+    "mcp": False,
+    "tool_timeout": False,
 }
 
 
@@ -38,7 +29,7 @@ class CircuitBreaker:
         if self.opened_at is None:
             return "closed"
         if time.monotonic() - self.opened_at >= self.reset_after_s:
-            return "half_open"  # let one call through to test the dependency
+            return "half_open"
         return "open"
 
     async def call(self, fn: Callable[..., Awaitable[Any]], *args: Any, timeout: float, **kwargs: Any) -> Any:

@@ -1,16 +1,3 @@
-"""Tool agent and the human approval step.
-
-The tool agent lets the LLM call tools in a short loop. It only ever sees the tools the
-user's role allows, and every call still goes through execute_tool(), which checks the
-role again. Read-only calls in the same round run concurrently.
-
-Write actions (create_incident) are never executed here. The agent records them as a
-pending action and the graph routes to approve_action, which pauses the run with
-interrupt() until a human approves or rejects it. Keeping the pause in its own node
-matters: when LangGraph resumes, it re-runs the interrupted node from the top, and we do
-not want to repeat the LLM call that proposed the action.
-"""
-
 import asyncio
 import json
 
@@ -74,7 +61,7 @@ async def tool_agent(state: dict, runtime: Runtime[User]) -> dict:
                 pending = {"tool": write["name"], "args": write["args"]}
                 emit({"type": "approval", "status": "requested", **pending})
             else:
-                await execute_tool(ctx, write["name"], write["args"])  # records and reports the denial
+                await execute_tool(ctx, write["name"], write["args"])
             break
         if calls_made >= MAX_TOOL_CALLS:
             notes.append(f"Stopped after {MAX_TOOL_CALLS} tool calls.")
@@ -98,5 +85,5 @@ async def approve_action(state: dict, runtime: Runtime[User]) -> dict:
     emit({"type": "approval", "status": "approved", "tool": action["tool"]})
     await memory.audit(runtime.store, user, "action_approved", action)
     ctx = ToolContext(user, runtime.store, emit)
-    result = await execute_tool(ctx, action["tool"], action["args"])  # role is checked again here
+    result = await execute_tool(ctx, action["tool"], action["args"])
     return {"pending_action": None, "tool_results": [result]}

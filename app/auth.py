@@ -1,10 +1,3 @@
-"""Users, roles, permissions, login tokens and per-user rate limiting.
-
-ROLE_POLICY is the single place that says what a role may see and do. Every
-enforcement point (tool binding, tool execution, retrieval filters, API endpoints)
-reads from it, so there is nothing to keep in sync.
-"""
-
 import datetime as dt
 import hashlib
 import hmac
@@ -22,7 +15,7 @@ ACCESS_LEVELS = ["public", "internal", "confidential", "restricted"]
 SEARCH_TOOLS = {"knowledge_search"}
 ANALYST_TOOLS = {"deep_research", "python_analysis", "search_employees", "get_service", "search_incidents"}
 ADMIN_TOOLS = {"create_incident", "view_audit_log"}
-WRITE_TOOLS = {"create_incident"}  # need human approval before they run
+WRITE_TOOLS = {"create_incident"}
 
 ROLE_POLICY = {
     "viewer": {"access_levels": ACCESS_LEVELS[:2], "tools": SEARCH_TOOLS},
@@ -49,9 +42,6 @@ class User:
     def can_use(self, tool: str) -> bool:
         return tool in self.tools
 
-
-# Option A from the brief: hardcoded users. Passwords are stored as salted PBKDF2 hashes.
-# Demo passwords: viewer123 / analyst123 / admin123
 USERS = {
     "viewer1": {
         "name": "Kasun Silva", "role": "viewer", "department": "retail",
@@ -120,7 +110,7 @@ class TokenBucket:
 
     def __init__(self, limits: dict[str, tuple[int, float]]):
         self.limits = limits
-        self.buckets: dict[str, list[float]] = {}  # username -> [tokens, last_refill_time]
+        self.buckets: dict[str, list[float]] = {}
 
     def take(self, username: str, role: str) -> float:
         """Return 0 if allowed, otherwise the seconds until a token is available."""
@@ -135,7 +125,6 @@ class TokenBucket:
         return (1 - tokens) / refill
 
 
-# Buckets live in memory, which is fine for one API process. Move to Redis if we run several replicas.
 rate_limiter = TokenBucket(settings.rate_limits)
 
 

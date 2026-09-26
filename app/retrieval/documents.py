@@ -1,13 +1,3 @@
-"""Loads the markdown knowledge base and splits it into chunks.
-
-Each document has YAML front matter (doc_id, title, document_type, department,
-access_level, created_date, owner, tags). We split on `## ` headings so a chunk is one
-logical section ("Root Cause", "Rollback", ...). That keeps citations meaningful and lets
-the research agent read a single section instead of a whole document.
-
-A chunk is a flat dict so it can live in LangGraph state and in Pinecone metadata as is.
-"""
-
 import datetime as dt
 import re
 from functools import lru_cache
@@ -17,8 +7,6 @@ import yaml
 
 from app.config import settings
 
-# Namespaces keep unrelated collections apart and let the supervisor search only
-# the ones a question needs.
 NAMESPACE_BY_TYPE = {
     "incident": "engineering",
     "architecture": "engineering",

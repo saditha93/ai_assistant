@@ -1,22 +1,3 @@
-"""The LangGraph that connects all agents.
-
-    guard_input ──blocked──> refuse ──> END
-        │ allowed
-    load_memory ──> supervisor ──> [retrieval_agent | research_agent | tool_agent]* ──> responder ──> validator
-                                     (in the order the plan lists)       │                   ^           │
-                                                            write action ─┴─> approve_action  └── retry ──┤
-                                                                                                          v
-                                                                                           save_memory ──> END
-
-Every node is wrapped by `node()`, which:
-  * reports start/end/error events to the activity panel with timings,
-  * enforces a timeout,
-  * turns an exception into an entry in state["errors"] plus a safe fallback update, so a
-    failing agent degrades the answer instead of killing the run,
-  * advances the plan for worker nodes even when they fail, so routing cannot loop.
-Interrupts (human approval) are re-raised untouched; LangGraph needs them to pause.
-"""
-
 import asyncio
 import time
 from collections.abc import Awaitable, Callable
@@ -62,7 +43,7 @@ def node(name: str, fn: NodeFn, *, timeout: float = 60, pops_step: bool = False,
                 update = await fn(state, runtime) or {}
             status = "end"
         except GraphBubbleUp:
-            raise  # human-in-the-loop interrupt: let LangGraph pause the run
+            raise
         except Exception as exc:
             log.exception("node_failed", node=name)
             error = describe_error(exc)

@@ -1,18 +1,3 @@
-"""Runs small pieces of LLM-written Python (RLM search plans, analysis code).
-
-Three layers:
-  1. The code is parsed and every AST node is checked against an allowlist: no imports,
-     no class/function definitions with decorators, no dunder or private attributes,
-     no global/nonlocal, no with/try.
-  2. It runs with a tiny set of builtins plus the helper functions we pass in, so there
-     is no open(), eval(), getattr() or __import__ to reach for.
-  3. A trace function enforces a wall-clock deadline line by line, so an infinite loop
-     is stopped instead of hanging the worker thread.
-
-This is defence in depth for a demo, not an OS-level sandbox. Production would run the
-code in a separate container or a service like gVisor / Firecracker.
-"""
-
 import ast
 import statistics
 import sys
@@ -40,8 +25,6 @@ SAFE_BUILTINS = {
 }
 SAFE_BUILTINS.update(Counter=Counter, defaultdict=defaultdict, mean=statistics.mean, median=statistics.median)
 
-# str.format can walk attributes inside the format string ("{0.__globals__}"), which the
-# AST check cannot see. f-strings are fine because their expressions are real AST nodes.
 BLOCKED_ATTRS = {"format", "format_map"}
 
 MAX_OUTPUT_CHARS = 2000
@@ -96,7 +79,7 @@ def run_code(code: str, variables: dict, timeout_s: float = 20) -> dict:
     previous = sys.gettrace()
     sys.settrace(tracer)
     try:
-        exec(compile(tree, "<sandbox>", "exec"), variables)  # noqa: S102 - checked above
+        exec(compile(tree, "<sandbox>", "exec"), variables)
         error = None
     except Exception as exc:
         error = f"{type(exc).__name__}: {exc}"

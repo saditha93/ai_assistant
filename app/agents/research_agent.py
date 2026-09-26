@@ -1,26 +1,3 @@
-"""Research agent: a simplified Recursive Language Model (RLM).
-
-Instead of putting documents into the prompt, the root model gets a catalog (titles,
-types, dates and section names, no content) and a Python environment. It writes code to:
-  1. explore the collection   (catalog, find_documents, search)
-  2. plan the search in Python (filters, loops, batches)
-  3. read targeted sections    (read_section, never whole documents)
-  4. hand work to sub-calls    (llm_query / llm_batch on a batch of sections)
-  5. recurse                   (sub_agent starts a new research agent on a subset of documents)
-  6. aggregate and finish      (FINAL(answer))
-
-The model only sees what its code prints, truncated, so its context stays small no matter
-how large the collection is. Limits keep it bounded: cells per run, sub-calls per task,
-recursion depth and a wall-clock deadline.
-
-If the loop fails (bad code twice, no FINAL, or no LLM at all) we run a fixed plan with the
-same helpers: find -> batch -> analyse each batch -> combine. So the user still gets a
-structured answer and the activity panel still shows the decomposition.
-
-Everything runs in a worker thread (the sandbox is synchronous), so events are handed back
-to the event loop with call_soon_threadsafe.
-"""
-
 import asyncio
 import datetime as dt
 import json
@@ -44,7 +21,7 @@ MAX_SUBCALLS = 20
 MAX_DEPTH = 2
 DEADLINE_S = 170
 MAX_PROMPT_CHARS = 12000
-MAX_EVIDENCE = 80  # every section read can be cited, so all of them must reach the validator
+MAX_EVIDENCE = 80
 
 ROOT_PROMPT = """You are the research agent of {brand}. You answer a research task by writing Python, one step
 at a time. You cannot see document text directly; you explore it with these functions:
@@ -88,8 +65,6 @@ class ResearchSession:
         self.touched: dict[str, dict] = {}  # chunk id -> chunk; becomes evidence for citations
         self.subcalls = 0
         self.deadline = time.monotonic() + DEADLINE_S
-
-    # ---- helpers exposed to the generated code ----
 
     def find_documents(self, document_type=None, department=None, since=None, query=None) -> list[dict]:
         docs = [d for d in catalog(self.chunks)
@@ -149,8 +124,6 @@ class ResearchSession:
         replies = llm(name="rlm_sub_query", light=True).batch(prompts, config={"max_concurrency": 4})
         return [r.text for r in replies]
 
-    # ---- the loop ----
-
     @traceable(name="rlm_research", run_type="chain")
     def run(self, task: str, depth: int = 0, doc_ids: list[str] | None = None) -> dict:
         docs = catalog([c for c in self.chunks if not doc_ids or c["doc_id"] in doc_ids])
@@ -205,8 +178,6 @@ class ResearchSession:
 
         mode = "rlm"
         if not final:
-            # Out of turns. The work so far is in the conversation, so ask for the answer
-            # directly instead of throwing it away.
             self.emit({"type": "research", "status": "forced_final", "depth": depth})
             messages.append(HumanMessage("You are out of turns. Reply now with the final answer in markdown, "
                                          "citing [chunk_id]s from the sections you read. No code."))
@@ -255,7 +226,6 @@ class ResearchSession:
                 return self.run(task)
             except Exception as exc:
                 self.emit({"type": "research", "status": "fallback", "reason": str(exc)[:300]})
-                # The loop may have used up the budget; the fallback gets a small one of its own.
                 self.subcalls, self.deadline = 0, time.monotonic() + 45
         return self.fixed_plan(task, plan)
 
@@ -278,7 +248,7 @@ async def research_agent(state: dict, runtime: Runtime[User]) -> dict:
     update: dict = {}
     try:
         result = await asyncio.to_thread(session.investigate, task, plan)
-    except Exception as exc:  # keep the sections already read; the responder can still use them
+    except Exception as exc:
         result = {"answer": "", "mode": "failed"}
         update["errors"] = [{"node": "research_agent", "error": str(exc)[:200]}]
     result["subcalls"] = session.subcalls

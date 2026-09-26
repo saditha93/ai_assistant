@@ -1,20 +1,3 @@
-"""Conversation memory.
-
-Short-term (one session):
-  The LangGraph checkpointer saves the graph state per thread (`user:session`), so the
-  message history survives between turns and API restarts. To keep prompts small we keep
-  the last KEEP_TURNS turns verbatim and fold older ones into a running summary.
-
-Long-term (across sessions, per user), kept in the LangGraph store:
-  (username, "interactions")  every question with a short answer summary and citations
-  (username, "facts")         things the user told us about themselves ("I work on payments")
-  Relevant past interactions are found with BM25 over the stored questions. At this size
-  that is instant and needs no extra embedding calls; a vector index on the store is the
-  upgrade path when histories get long.
-
-The same store also holds the audit log and answer feedback.
-"""
-
 import datetime as dt
 import re
 import uuid
@@ -26,9 +9,8 @@ from app.auth import User
 from app.retrieval.bm25 import BM25
 
 KEEP_TURNS = 6
-HISTORY_SCAN = 50  # how many past interactions we rank for relevance
+HISTORY_SCAN = 50
 
-# Sentences where users tell us something worth remembering about themselves.
 FACT_PATTERNS = [
     re.compile(r"\b(i work (on|in|for|with)|i'm (on|in) the|i am (on|in) the)\b", re.IGNORECASE),
     re.compile(r"\b(i prefer|please always|always give me)\b", re.IGNORECASE),
@@ -41,8 +23,6 @@ def _now() -> str:
 
 
 def extract_facts(message: str) -> list[str]:
-    # Regex catches the common phrasings; an LLM extractor would catch more at the
-    # cost of one extra call per turn.
     sentences = (s.strip() for s in re.split(r"(?<=[.!?])\s+", message))
     return [s.rstrip(".") for s in sentences if any(p.search(s) for p in FACT_PATTERNS)]
 

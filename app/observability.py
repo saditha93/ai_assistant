@@ -1,10 +1,3 @@
-"""Structured logging and the small bit of LangSmith glue we need outside the graph.
-
-LangSmith tracing itself is switched on by environment variables (LANGSMITH_TRACING,
-LANGSMITH_API_KEY, LANGSMITH_PROJECT). LangGraph and LangChain pick those up and trace
-every node, LLM call and tool call; our own functions opt in with @traceable.
-"""
-
 import logging
 import sys
 
@@ -40,6 +33,6 @@ def send_langsmith_feedback(run_id: str, score: int, comment: str | None) -> boo
     try:
         Client().create_feedback(run_id, key="user_rating", score=score, comment=comment, trace_id=run_id)
         return True
-    except Exception as exc:  # feedback must never break the API call
+    except Exception as exc:
         log.warning("langsmith_feedback_failed", error=str(exc))
         return False

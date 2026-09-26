@@ -1,5 +1,3 @@
-"""First and last line of the graph for unsafe requests: input guard and refusal."""
-
 from langgraph.runtime import Runtime
 from langgraph.types import Overwrite
 
@@ -7,8 +5,6 @@ from app import guardrails, memory
 from app.agents.response_agent import as_messages
 from app.auth import User
 
-# Everything that belongs to one turn. Accumulating lists are overwritten (not appended to)
-# so evidence or errors from the previous question never leak into this one.
 TURN_RESET = {
     "evidence": Overwrite([]), "tool_results": Overwrite([]), "errors": Overwrite([]), "notes": Overwrite([]),
     "plan": {}, "steps": [], "memory": {}, "retrieval": {}, "research": {}, "pending_action": None,
