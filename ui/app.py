@@ -49,8 +49,6 @@ def stream_events(path: str, body: dict):
         yield "http_error", {"status": 0, "detail": f"Cannot reach the API at {API_URL} ({exc})"}
 
 
-# ---- activity panel ----
-
 def render_event(box, e: dict) -> None:
     kind = e.get("type")
     if kind == "node":
@@ -141,8 +139,6 @@ def render_event(box, e: dict) -> None:
         box.markdown(f"Response: **{e['status']}**" + (f" ({e['reason']})" if e.get("reason") else ""))
 
 
-# ---- chat ----
-
 def run_turn(path: str, body: dict, chat_box, status_line) -> None:
     state.activity = []
     activity_box = new_activity_box()
@@ -194,8 +190,6 @@ def render_message(m: dict, i: int) -> None:
                 state.feedback_sent.add(m["run_id"])
                 st.toast("Thanks for the feedback")
 
-
-# ---- sidebar ----
 
 with st.sidebar:
     st.header("Crestline Assistant")
@@ -249,8 +243,6 @@ with st.sidebar:
             for entry in api("GET", "/admin/audit", params={"limit": 20}) or []:
                 st.caption(f"{entry['ts']} {entry['user']} {entry['event']} {json.dumps(entry['detail'])[:120]}")
 
-
-# ---- main layout ----
 
 chat_col, activity_col = st.columns([3, 2], gap="large")
 with activity_col:

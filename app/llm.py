@@ -16,10 +16,7 @@ from app.resilience import FAULTS
 class LLMUnavailable(Exception):
     pass
 
-
-# Free tier: every model has its own daily and per-minute quota. We remember which models
-# answered 429 and skip them until their quota is back, instead of waiting on failing calls.
-EXHAUSTED: dict[str, float] = {}  # model -> time.time() when it can be tried again
+EXHAUSTED: dict[str, float] = {}
 _limiters: dict[str, InMemoryRateLimiter] = {}
 
 

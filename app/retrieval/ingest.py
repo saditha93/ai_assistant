@@ -11,7 +11,6 @@ from app.llm import embed_documents
 from app.retrieval.documents import index_text, load_corpus
 from app.retrieval.search import DENSE_FIELD, METADATA_FIELDS, SPARSE_FIELD, hybrid_search, local_index
 
-# Free tier allows 100 embedded texts per minute, and each text counts as one request.
 EMBED_BATCH = 20
 
 

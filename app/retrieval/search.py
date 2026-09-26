@@ -135,7 +135,7 @@ async def hybrid_search(
         try:
             hits = await pinecone_breaker.call(_rerank, query, hits[:20], top_k, timeout=10)
             result["reranked"] = True
-        except Exception as exc:  # reranking improves order but is not essential
+        except Exception as exc:
             result["notes"].append(f"Reranker unavailable ({exc}). Kept hybrid order.")
 
     clean_hits = []

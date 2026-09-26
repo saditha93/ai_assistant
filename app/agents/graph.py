@@ -81,7 +81,6 @@ def build_graph(checkpointer=None, store=None):
                                    on_error=lambda s, e: {"input_check": {"allowed": False, "reason": "guard error"}}))
     g.add_node("refuse", node("refuse", refuse, timeout=5, on_error=lambda s, e: {"answer": REFUSAL}))
     g.add_node("load_memory", node("load_memory", load_memory, timeout=10))
-    # If the supervisor itself crashes, fall back to plain retrieval: every role may do that.
     g.add_node("supervisor", node("supervisor", supervisor, timeout=45, on_error=lambda s, e: {
         "plan": {**keyword_plan(s["question"]), "steps": ["retrieve"]}, "steps": ["retrieve"]}))
     g.add_node("retrieval_agent", node("retrieval_agent", retrieval_agent, timeout=45, pops_step=True))
