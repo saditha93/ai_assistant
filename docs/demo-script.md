@@ -140,6 +140,6 @@ Use the Assumptions and Trade-offs sections of the README. The key points:
 - **Research search.** The research agent searches an in-memory, role-filtered copy of the chunks.
 
 Close with:
-- `uv run pytest`: 49 offline tests.
+- `uv run pytest`: 52 offline tests.
 - `uv run python -m evals.run`: recall@5 and MRR for BM25 vs hybrid vs hybrid + rerank.
 - The git history, which shows the build order.

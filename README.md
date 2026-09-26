@@ -104,7 +104,7 @@ the whole test suite runs offline.
 ## Tests and evaluation
 
 ```bash
-uv run pytest             # 49 tests, no keys or network needed
+uv run pytest             # 52 tests, no keys or network needed
 uv run ruff check .
 uv run python -m evals.run
 ```
