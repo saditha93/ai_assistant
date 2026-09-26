@@ -114,7 +114,10 @@ IMAGE_RE = re.compile(r"!\[[^\]]*\]\([^)]*\)")
 LINK_RE = re.compile(r"\[([^\]]+)\]\((https?://[^)\s]+)\)")
 BARE_URL_RE = re.compile(r"https?://[^\s)>\]]+")
 ALLOWED_LINK_DOMAINS = ("crestline.example",)
-CITATION_RE = re.compile(r"\[([A-Z]+-[A-Za-z0-9-]+#\d+)\]")
+# One or more ids in square brackets: [INC-2025-041#4], [RB-001#2, RB-001#5] or a whole document [POL-003].
+_ID = r"[A-Z]+-[A-Za-z0-9-]*\d(?:#\d+)?"
+CITATION_RE = re.compile(rf"\[({_ID}(?:\s*[,;]\s*{_ID})*)\]")
+ID_RE = re.compile(_ID)
 
 BRAND_RULES = [
     (r"\bguarantee[ds]?\b.{0,30}\b(returns?|profits?|gains?|approval)\b|\brisk[- ]free\b", "financial_guarantee"),
@@ -194,13 +197,23 @@ def clean_stream_text(text: str) -> str:
 
 
 def check_citations(answer: str, evidence_ids: set[str]) -> tuple[str, list[str], list[str]]:
-    """Remove citations that do not point at evidence we actually retrieved."""
-    cited = CITATION_RE.findall(answer)
-    invalid = sorted({c for c in cited if c not in evidence_ids})
-    for c in invalid:
-        answer = answer.replace(f"[{c}]", "")
-    valid = sorted({c for c in cited if c in evidence_ids})
-    return answer, valid, invalid
+    """Remove citations that do not point at evidence we actually retrieved.
+
+    A chunk id must match exactly. A bare document id is accepted when we retrieved at least
+    one chunk of that document."""
+    doc_ids = {e.split("#")[0] for e in evidence_ids}
+    valid: set[str] = set()
+    invalid: set[str] = set()
+
+    def keep_known(m: re.Match) -> str:
+        ids = ID_RE.findall(m.group(1))
+        good = [i for i in ids if i in evidence_ids or ("#" not in i and i in doc_ids)]
+        valid.update(good)
+        invalid.update(i for i in ids if i not in good)
+        return f"[{', '.join(good)}]" if good else ""
+
+    answer = CITATION_RE.sub(keep_known, answer)
+    return answer, sorted(valid), sorted(invalid)
 
 
 def validate_answer(answer: str, evidence_ids: set[str], needs_citations: bool) -> dict:

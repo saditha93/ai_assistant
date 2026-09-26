@@ -150,6 +150,8 @@ async def stream_turn(graph, payload, user: User, session_id: str) -> AsyncItera
                                         stream_mode=["custom", "messages", "updates"], version="v2"):
             kind, data = part["type"], part["data"]
             if kind == "custom":
+                if data.get("type") == "answer_reset":
+                    buffer = ""  # drop the unsent tail of the rejected draft
                 yield ServerSentEvent(event="activity", data=data)
             elif kind == "messages":
                 chunk, meta = data
@@ -167,7 +169,10 @@ async def stream_turn(graph, payload, user: User, session_id: str) -> AsyncItera
             yield ServerSentEvent(event="done", data={"status": "awaiting_approval", "run_id": str(run_id)})
             return
         values = snapshot.values
-        titles = {c["id"]: (c["title"], c["section"]) for c in values.get("evidence", [])}
+        titles = {}
+        for c in values.get("evidence", []):
+            titles[c["id"]] = (c["title"], c["section"])
+            titles.setdefault(c["doc_id"], (c["title"], "whole document"))
         validation = values.get("validation", {})
         yield ServerSentEvent(event="answer", data={
             "answer": values.get("answer", ""),

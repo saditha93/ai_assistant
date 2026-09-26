@@ -76,6 +76,13 @@ def test_hallucinated_citations_removed():
     assert "citations_exist" in result["failed"]
 
 
+def test_grouped_and_document_citations():
+    evidence = {"INC-2025-041#4", "RB-002#1"}
+    text, valid, invalid = g.check_citations("Pool [INC-2025-041#4, INC-2099-9#1] see [RB-002] not [X-1#1].", evidence)
+    assert valid == ["INC-2025-041#4", "RB-002"] and invalid == ["INC-2099-9#1", "X-1#1"]
+    assert "[INC-2025-041#4]" in text and "X-1" not in text and "[RB-002]" in text
+
+
 def test_canary_leak_and_brand_rules():
     result = g.validate_answer(f"Marker {g.CANARY}. This is a risk-free investment.", set(), False)
     assert g.CANARY not in result["answer"]

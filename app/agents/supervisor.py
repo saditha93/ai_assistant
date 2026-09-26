@@ -36,7 +36,7 @@ class Plan(BaseModel):
     namespaces: list[Literal["engineering", "governance", "product"]] = Field(default_factory=list)
     document_types: list[DocType] = Field(default_factory=list)
     departments: list[str] = Field(default_factory=list)
-    since: str | None = Field(None, description="YYYY-MM-DD lower bound when the request implies a time window")
+    since: dt.date | None = Field(None, description="Lower date bound when the request implies a time window")
     reasoning: str = Field(description="One or two sentences on why this plan")
 
 
@@ -55,6 +55,9 @@ Namespaces: engineering (architecture, runbooks, incidents), governance (policie
 meeting notes). Leave namespaces empty to search all of them.
 Document types: incident, architecture, runbook, policy, product_spec, meeting_notes. Departments: payments,
 platform, security, retail, risk, hr, digital. Only set filters the request clearly implies.
+Use the fewest steps that answer the request. Add tools only when it needs a live system (people, on-call,
+service status, the incident database, creating an incident). Research already reads the documents, so
+research does not also need retrieve.
 Today is {today}. Turn relative time ("last year", "this quarter") into `since`.
 Greetings and thanks: intent greeting, no steps. Anything unrelated to the bank's work (jokes, trivia,
 personal or investment advice): intent out_of_scope, no steps.
@@ -134,7 +137,7 @@ async def supervisor(state: dict, runtime: Runtime[User]) -> dict:
                 SystemMessage(SYSTEM.format(brand=settings.brand_name, today=dt.date.today().isoformat())),
                 HumanMessage(prompt),
             ])
-            plan = result.model_dump()
+            plan = result.model_dump(mode="json")  # dates become YYYY-MM-DD strings
         except Exception as exc:
             errors.append({"node": "supervisor", "error": f"LLM planner failed: {exc}"})
     if plan is None:
