@@ -7,7 +7,8 @@ from langgraph.store.memory import InMemoryStore
 
 from app import auth, tools
 from app.agents.graph import build_graph
-from app.main import app
+from app.guardrails import clean_stream_text
+from app.main import _split_ready, app
 
 
 def parse_sse(text: str) -> list[tuple[str, dict]]:
@@ -100,3 +101,14 @@ async def test_feedback_and_health(client):
     health = (await client.get("/health")).json()
     assert health["dependencies"]["mcp"] == "unavailable"
     assert set(health["circuit_breakers"]) == {"pinecone", "mcp"}
+
+
+def test_stream_filters_see_whole_values_across_chunks():
+    chunks = ["The card ", "4111 11", "11 1111 ", "1111 failed. See ", "![x](https://evil.exa",
+              "mple/a) and [RB-0", "01#2] done."]
+    buffer, sent = "", ""
+    for chunk in chunks:
+        ready, buffer = _split_ready(buffer + chunk)
+        sent += clean_stream_text(ready)
+    sent += clean_stream_text(buffer)
+    assert sent == "The card [REDACTED CARD] failed. See  and [RB-001#2] done."

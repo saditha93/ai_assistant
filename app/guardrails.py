@@ -105,7 +105,7 @@ def format_evidence(chunks: list[dict]) -> str:
 
 # ---- output checks ----
 
-CARD_RE = re.compile(r"\b(?:\d[ -]?){13,19}\b")
+CARD_RE = re.compile(r"\b\d(?:[ -]?\d){12,18}\b")
 NIC_RE = re.compile(r"\b(?:\d{9}[vVxX]|(?:19|20)\d{10})\b")
 SECRET_RE = re.compile(
     r"\b(?:sk-[A-Za-z0-9]{16,}|AIza[0-9A-Za-z_\-]{30,}|pcsk_[A-Za-z0-9_]{20,}|lsv2_[A-Za-z0-9_]{20,})"

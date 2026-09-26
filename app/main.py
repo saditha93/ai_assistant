@@ -12,6 +12,7 @@ Chat answers stream as Server-Sent Events:
   error / done
 """
 
+import re
 import uuid
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -129,14 +130,24 @@ def _config(user: User, session_id: str, run_id: uuid.UUID) -> dict:
     }
 
 
+TRAILING_NUMBER = re.compile(r"\d[\d -]*$")
+
+
 def _split_ready(buffer: str) -> tuple[str, str]:
-    """Release streamed text line by line so the redaction regexes see whole lines."""
-    cut = buffer.rfind("\n")
-    if cut >= 0:
-        return buffer[: cut + 1], buffer[cut + 1:]
-    if len(buffer) > 400:  # a very long line: release it rather than stall the stream
-        return buffer, ""
-    return "", buffer
+    """Decide how much streamed text is safe to send now.
+
+    We release up to the last space, but hold back while a markdown link, image or citation
+    bracket is still open, or while the text ends in digits (a card number arrives in pieces
+    like "4111 1111"). That way the redaction and link filters always see whole values.
+    """
+    cut = max(buffer.rfind(" "), buffer.rfind("\n"))
+    ready = buffer[: cut + 1]
+    balanced = ready.count("[") == ready.count("]") and ready.count("(") == ready.count(")")
+    if cut < 0 or not balanced or TRAILING_NUMBER.search(ready.rstrip()):
+        if len(buffer) > 600:  # never stall the stream on unusual text
+            return buffer, ""
+        return "", buffer
+    return ready, buffer[cut + 1:]
 
 
 async def stream_turn(graph, payload, user: User, session_id: str) -> AsyncIterator[ServerSentEvent]:

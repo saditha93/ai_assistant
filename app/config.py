@@ -26,7 +26,7 @@ class Settings(BaseSettings):
     # Gemini 3 "thinking" depth. low keeps multi-step agents responsive; answers are grounded in
     # retrieved text, so deep reasoning buys little here.
     gemini_thinking_level: str = "low"
-    llm_timeout_s: float = 45
+    llm_timeout_s: float = 30
 
     # Pinecone
     pinecone_api_key: str = ""

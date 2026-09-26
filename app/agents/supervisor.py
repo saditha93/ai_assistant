@@ -9,6 +9,7 @@ The plan is then checked against the user's role. The LLM may suggest deep resea
 viewer; the permission check removes it and tells the user why.
 """
 
+import asyncio
 import datetime as dt
 import re
 from typing import Literal
@@ -23,6 +24,8 @@ from app.config import settings
 from app.llm import llm, llm_available
 from app.retrieval.documents import NAMESPACE_BY_TYPE, NAMESPACES
 from app.tools import DocType
+
+PLAN_TIMEOUT_S = 25
 
 Step = Literal["retrieve", "research", "tools"]
 Intent = Literal["knowledge_question", "analysis", "lookup", "action", "greeting", "out_of_scope"]
@@ -133,13 +136,17 @@ async def supervisor(state: dict, runtime: Runtime[User]) -> dict:
             + f"\n\nRequest: {question}"
         )
         try:
-            result = await llm(name="supervisor_plan", schema=Plan).ainvoke([
-                SystemMessage(SYSTEM.format(brand=settings.brand_name, today=dt.date.today().isoformat())),
-                HumanMessage(prompt),
-            ])
+            # Shorter than the node timeout, so a slow or rate-limited model falls back to the
+            # keyword plan here instead of failing the whole node.
+            async with asyncio.timeout(PLAN_TIMEOUT_S):
+                result = await llm(name="supervisor_plan", schema=Plan).ainvoke([
+                    SystemMessage(SYSTEM.format(brand=settings.brand_name, today=dt.date.today().isoformat())),
+                    HumanMessage(prompt),
+                ])
             plan = result.model_dump(mode="json")  # dates become YYYY-MM-DD strings
         except Exception as exc:
-            errors.append({"node": "supervisor", "error": f"LLM planner failed: {exc}"})
+            reason = "timed out" if isinstance(exc, TimeoutError) else str(exc)[:160]
+            errors.append({"node": "supervisor", "error": f"LLM planner failed ({reason}); used keyword rules"})
     if plan is None:
         plan = keyword_plan(question)
 

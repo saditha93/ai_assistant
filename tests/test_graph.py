@@ -116,3 +116,15 @@ async def test_write_action_waits_for_human_approval(monkeypatch):
     assert state["tool_results"][-1]["error"] == "Rejected by the user"
     assert state["answer"]
     assert "action_rejected" in {a["event"] for a in await memory.read_audit(store)}
+
+
+async def test_supervisor_crash_falls_back_to_retrieval(monkeypatch):
+    def boom(*args, **kwargs):
+        raise RuntimeError("planner exploded")
+
+    monkeypatch.setattr(supervisor_module, "enforce_permissions", boom)
+    graph = build_graph(InMemorySaver(), InMemoryStore())
+    state, events, _ = await run(graph, VIEWER, "How do we rotate TLS certificates?")
+    assert "retrieval_agent" in nodes_run(events)
+    assert state["errors"][0]["node"] == "supervisor"
+    assert state["citations"]

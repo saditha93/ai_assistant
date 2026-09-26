@@ -31,7 +31,7 @@ from app.agents.research_agent import research_agent
 from app.agents.response_agent import MAX_ATTEMPTS, extractive_answer, responder, validator
 from app.agents.retrieval_agent import retrieval_agent
 from app.agents.state import AgentState
-from app.agents.supervisor import supervisor
+from app.agents.supervisor import keyword_plan, supervisor
 from app.agents.tool_agent import approve_action, tool_agent
 from app.auth import User
 from app.guardrails import REFUSAL
@@ -100,7 +100,9 @@ def build_graph(checkpointer=None, store=None):
                                    on_error=lambda s, e: {"input_check": {"allowed": False, "reason": "guard error"}}))
     g.add_node("refuse", node("refuse", refuse, timeout=5, on_error=lambda s, e: {"answer": REFUSAL}))
     g.add_node("load_memory", node("load_memory", load_memory, timeout=10))
-    g.add_node("supervisor", node("supervisor", supervisor, timeout=45))
+    # If the supervisor itself crashes, fall back to plain retrieval: every role may do that.
+    g.add_node("supervisor", node("supervisor", supervisor, timeout=45, on_error=lambda s, e: {
+        "plan": {**keyword_plan(s["question"]), "steps": ["retrieve"]}, "steps": ["retrieve"]}))
     g.add_node("retrieval_agent", node("retrieval_agent", retrieval_agent, timeout=45, pops_step=True))
     g.add_node("research_agent", node("research_agent", research_agent, timeout=240, pops_step=True))
     g.add_node("tool_agent", node("tool_agent", tool_agent, timeout=90, pops_step=True))

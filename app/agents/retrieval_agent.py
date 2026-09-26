@@ -55,9 +55,12 @@ async def retrieval_agent(state: dict, runtime: Runtime[User]) -> dict:
     if _is_weak(result):
         new_query = query
         if llm_available():
-            prompt = HumanMessage(REWRITE_PROMPT.format(query=query))
-            reply = await llm(name="query_rewrite", light=True).ainvoke([prompt])
-            new_query = reply.text.strip().strip('"')[:300] or query
+            try:
+                prompt = HumanMessage(REWRITE_PROMPT.format(query=query))
+                reply = await llm(name="query_rewrite", light=True).ainvoke([prompt])
+                new_query = reply.text.strip().strip('"')[:300] or query
+            except Exception as exc:  # keep the original query; the first results are still usable
+                notes.append(f"Query rewrite failed ({str(exc)[:80]}).")
         emit({"type": "retrieval", "status": "retrying", "query": new_query,
               "reason": "weak results; rewriting the query and searching all namespaces without filters"})
         retry = await hybrid_search(new_query, user)
