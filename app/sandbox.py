@@ -35,7 +35,7 @@ SAFE_BUILTINS = {
     for name in (
         "len", "range", "enumerate", "zip", "sorted", "reversed", "min", "max", "sum", "abs", "round",
         "any", "all", "list", "dict", "set", "tuple", "str", "int", "float", "bool", "isinstance", "map",
-        "filter", "True", "False", "None",
+        "filter", "next", "iter", "chr", "ord", "repr", "divmod", "True", "False", "None",
     )
 }
 SAFE_BUILTINS.update(Counter=Counter, defaultdict=defaultdict, mean=statistics.mean, median=statistics.median)
