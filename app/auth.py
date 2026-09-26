@@ -135,7 +135,7 @@ class TokenBucket:
         return (1 - tokens) / refill
 
 
-# ponytail: in-memory buckets, one API process. Move to Redis if we run several replicas.
+# Buckets live in memory, which is fine for one API process. Move to Redis if we run several replicas.
 rate_limiter = TokenBucket(settings.rate_limits)
 
 

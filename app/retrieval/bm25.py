@@ -24,7 +24,7 @@ TOKEN_RE = re.compile(r"[a-z0-9]+")
 
 
 def _stem(token: str) -> str:
-    # ponytail: plural stripping only; swap in a real stemmer if recall on verb forms matters
+    # Plural stripping only; swap in a real stemmer if recall on verb forms matters
     if len(token) > 4 and token.endswith("ies"):
         return token[:-3] + "y"
     if len(token) > 3 and token.endswith("s") and not token.endswith("ss"):

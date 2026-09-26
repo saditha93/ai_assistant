@@ -41,7 +41,7 @@ def _now() -> str:
 
 
 def extract_facts(message: str) -> list[str]:
-    # ponytail: regex catches the common phrasings; an LLM extractor would catch more at the
+    # Regex catches the common phrasings; an LLM extractor would catch more at the
     # cost of one extra call per turn.
     sentences = (s.strip() for s in re.split(r"(?<=[.!?])\s+", message))
     return [s.rstrip(".") for s in sentences if any(p.search(s) for p in FACT_PATTERNS)]
