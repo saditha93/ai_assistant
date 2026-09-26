@@ -107,7 +107,9 @@ def format_evidence(chunks: list[dict]) -> str:
 
 CARD_RE = re.compile(r"\b(?:\d[ -]?){13,19}\b")
 NIC_RE = re.compile(r"\b(?:\d{9}[vVxX]|(?:19|20)\d{10})\b")
-SECRET_RE = re.compile(r"\b(?:sk-[A-Za-z0-9]{16,}|AIza[0-9A-Za-z_\-]{30,}|pcsk_[A-Za-z0-9_]{20,}|lsv2_[A-Za-z0-9_]{20,})")
+SECRET_RE = re.compile(
+    r"\b(?:sk-[A-Za-z0-9]{16,}|AIza[0-9A-Za-z_\-]{30,}|pcsk_[A-Za-z0-9_]{20,}|lsv2_[A-Za-z0-9_]{20,})"
+)
 IMAGE_RE = re.compile(r"!\[[^\]]*\]\([^)]*\)")
 LINK_RE = re.compile(r"\[([^\]]+)\]\((https?://[^)\s]+)\)")
 BARE_URL_RE = re.compile(r"https?://[^\s)>\]]+")
@@ -117,7 +119,8 @@ CITATION_RE = re.compile(r"\[([A-Z]+-[A-Za-z0-9-]+#\d+)\]")
 BRAND_RULES = [
     (r"\bguarantee[ds]?\b.{0,30}\b(returns?|profits?|gains?|approval)\b|\brisk[- ]free\b", "financial_guarantee"),
     (r"\byou should (invest|buy|sell|borrow)\b|\b(best|good) (stock|investment) to\b", "investment_advice"),
-    (r"\b(other|competitor|rival) banks?\b.{0,40}\b(worse|bad|scam|incompetent|terrible)\b", "competitor_disparagement"),
+    (r"\b(other|competitor|rival) banks?\b.{0,40}\b(worse|bad|scam|incompetent|terrible)\b",
+     "competitor_disparagement"),
     (r"\b(damn|hell|crap|stupid|idiot)\b", "unprofessional_language"),
 ]
 _BRAND = [(re.compile(p, re.IGNORECASE), label) for p, label in BRAND_RULES]

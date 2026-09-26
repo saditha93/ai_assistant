@@ -9,7 +9,9 @@ ADMIN = User("a", "Admin", "admin", "platform")
 
 def test_split_sections_by_heading():
     body = "Intro line\n\n## Summary\nshort\n\n## Root Cause\nthe pool ran out"
-    assert split_sections(body) == [("Overview", "Intro line"), ("Summary", "short"), ("Root Cause", "the pool ran out")]
+    assert split_sections(body) == [
+        ("Overview", "Intro line"), ("Summary", "short"), ("Root Cause", "the pool ran out"),
+    ]
 
 
 def test_corpus_chunks_have_attribution_metadata():

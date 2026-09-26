@@ -44,7 +44,8 @@ async def test_invalid_arguments_rejected():
 
 async def test_search_then_python_analysis():
     c, _ = ctx(ANALYST)
-    await execute_tool(c, "knowledge_search", {"query": "payments ledger connection pool", "document_types": ["incident"]})
+    args = {"query": "payments ledger connection pool", "document_types": ["incident"]}
+    await execute_tool(c, "knowledge_search", args)
     assert c.evidence
     code = "print(sorted({e['doc_id'] for e in data['evidence']}))"
     result = await execute_tool(c, "python_analysis", {"code": code})
