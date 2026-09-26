@@ -15,7 +15,6 @@ the conversation. Every step the agents take is visible live in the UI and trace
 - **Deployment:** Docker Compose.
 
 - Architecture and design decisions: [docs/architecture.md](docs/architecture.md)
-- Demo walkthrough: [docs/demo-script.md](docs/demo-script.md)
 
 ```mermaid
 flowchart LR
