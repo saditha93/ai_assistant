@@ -31,6 +31,7 @@ def _chat(model: str) -> ChatGoogleGenerativeAI:
         google_api_key=settings.google_api_key,
         timeout=settings.llm_timeout_s,
         max_retries=2,
+        thinking_level=settings.gemini_thinking_level,
     )
 
 

@@ -76,6 +76,10 @@ The ingest command ends with a smoke query through the same search code the agen
 Every path above is the same code the app uses when a dependency fails in production. That is why
 the whole test suite runs offline.
 
+> **Gemini free tier.** Each Flash model allows about 20 requests per day on a free key, and one deep
+> research turn uses around 10. For demos, enable billing on the key, or set
+> `GEMINI_MODEL=gemini-3.5-flash-lite` in `.env`.
+
 ## How the brief maps to the code
 
 | Requirement | Where |

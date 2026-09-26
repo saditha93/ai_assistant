@@ -330,3 +330,15 @@ would need Redis.
 | Reranker | Pinecone `bge-reranker-v2-m3` | Hosted cross-encoder, no extra service to run. Skipped automatically if it is unavailable. |
 
 All model names are environment variables.
+
+**Routing by cost.** High-volume, low-stakes calls try the lite model first and fall back to the main
+model: research sub-queries (`llm_query` / `llm_batch`), query rewrites and memory summaries. That is
+`llm(..., light=True)` in `app/llm.py`. Planning, tool use, the research root loop and final answers
+use the main model first.
+
+**Thinking level.** `GEMINI_THINKING_LEVEL=low` keeps a multi-step turn responsive. Answers are grounded
+in retrieved text, so deeper reasoning adds latency for little gain. It can be raised per deployment.
+
+**Free-tier quota.** The Gemini free tier allows about 20 requests per day per Flash model. One deep
+research turn uses around 10 main-model calls. For a full demo, either enable billing on the key or
+set `GEMINI_MODEL` to a lite model, which has a larger free allowance.

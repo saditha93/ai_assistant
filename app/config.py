@@ -23,6 +23,9 @@ class Settings(BaseSettings):
     gemini_fallback_model: str = "gemini-3.5-flash-lite"
     embed_model: str = "gemini-embedding-001"
     embed_dim: int = 768
+    # Gemini 3 "thinking" depth. low keeps multi-step agents responsive; answers are grounded in
+    # retrieved text, so deep reasoning buys little here.
+    gemini_thinking_level: str = "low"
     llm_timeout_s: float = 45
 
     # Pinecone
