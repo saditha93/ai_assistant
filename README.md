@@ -59,8 +59,8 @@ uv run streamlit run ui/app.py
 ### Loading the knowledge base into Pinecone
 
 ```bash
-uv run python -m app.retrieval.ingest              # creates the hybrid index and upserts 166 chunks
-uv run python -m app.retrieval.ingest --recreate   # rebuild from scratch
+uv run python -m app.retrieval.ingest      
+uv run python -m app.retrieval.ingest --recreate  
 ```
 
 The ingest command ends with a smoke query through the same search code the agents use.
