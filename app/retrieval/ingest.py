@@ -1,0 +1,86 @@
+"""Load the markdown knowledge base into Pinecone.
+
+    uv run python -m app.retrieval.ingest            # create index if needed, upsert all chunks
+    uv run python -m app.retrieval.ingest --recreate # drop and rebuild the index
+
+Each chunk becomes one record with a dense vector (Gemini), a sparse vector (BM25) and
+metadata used for filtering and attribution. Record ids are stable (`doc_id#n`), so
+running this again updates records in place.
+"""
+
+import argparse
+import asyncio
+from collections import defaultdict
+
+from pinecone import AsyncPinecone
+
+from app.auth import User
+from app.config import settings
+from app.llm import embed_documents
+from app.retrieval.documents import index_text, load_corpus
+from app.retrieval.search import DENSE_FIELD, METADATA_FIELDS, SPARSE_FIELD, hybrid_search, local_index
+
+EMBED_BATCH = 50
+
+
+async def ensure_index(pc: AsyncPinecone, recreate: bool) -> None:
+    exists = await pc.has_index(settings.pinecone_index)
+    if exists and recreate:
+        print(f"Deleting index {settings.pinecone_index}")
+        await pc.delete_index(settings.pinecone_index)
+        exists = False
+    if not exists:
+        print(f"Creating hybrid index {settings.pinecone_index}")
+        await pc.indexes.create(
+            name=settings.pinecone_index,
+            # Dense with dotproduct (our vectors are unit length, so this is cosine) plus a
+            # sparse field. A hybrid index must declare the sparse field at creation.
+            schema={"fields": {
+                DENSE_FIELD: {"type": "dense_vector", "dimension": settings.embed_dim, "metric": "dotproduct"},
+                SPARSE_FIELD: {"type": "sparse_vector"},
+            }},
+            deployment={"deployment_type": "managed", "cloud": "aws", "region": settings.pinecone_region},
+        )
+
+
+async def ingest(recreate: bool = False) -> None:
+    if not (settings.has_pinecone and settings.has_llm):
+        raise SystemExit("PINECONE_API_KEY and GOOGLE_API_KEY are both needed to ingest.")
+
+    chunks = list(load_corpus())
+    bm25 = local_index()
+    by_namespace = defaultdict(list)
+    for c in chunks:
+        by_namespace[c["namespace"]].append(c)
+
+    async with AsyncPinecone(api_key=settings.pinecone_api_key) as pc:
+        await ensure_index(pc, recreate)
+        index = await pc.index(settings.pinecone_index)
+        for namespace, items in by_namespace.items():
+            for start in range(0, len(items), EMBED_BATCH):
+                batch = items[start:start + EMBED_BATCH]
+                texts = [index_text(c) for c in batch]
+                dense = await embed_documents(texts)
+                records = [
+                    {"id": c["id"], "values": vec, "sparse_values": bm25.encode_doc(text),
+                     "metadata": {k: c[k] for k in METADATA_FIELDS}}
+                    for c, vec, text in zip(batch, dense, texts, strict=True)
+                ]
+                await index.upsert(vectors=records, namespace=namespace, show_progress=False)
+            print(f"  {namespace}: {len(items)} chunks")
+        await index.close()
+    print(f"Upserted {len(chunks)} chunks from {len({c['doc_id'] for c in chunks})} documents.")
+
+    # Smoke test: one query through the same code path the agents use.
+    await asyncio.sleep(5)  # freshly upserted records take a moment to become searchable
+    admin = User("ingest", "Ingest check", "admin", "platform")
+    result = await hybrid_search("payment gateway timeout root cause", admin)
+    print(f"Smoke query mode={result['mode']} reranked={result['reranked']}")
+    for h in result["hits"][:3]:
+        print(f"  {h['id']:<20} dense={h['dense_score']} sparse={h['sparse_score']} {h['title']}")
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--recreate", action="store_true")
+    asyncio.run(ingest(parser.parse_args().recreate))
