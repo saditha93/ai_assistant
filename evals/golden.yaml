@@ -1,0 +1,32 @@
+# Retrieval golden set: questions phrased differently from the documents on purpose,
+# so keyword matching alone does not always win. `expected` lists doc_ids that answer it.
+- question: What should on-call do when the ledger database runs out of connections?
+  expected: [RB-002]
+- question: How do we renew a certificate that is about to expire on the gateway?
+  expected: [RB-003]
+- question: Who approved using circuit breakers for vendor integrations?
+  expected: [MTG-2026-009]
+- question: How long do we have to write up a post-incident review?
+  expected: [POL-003]
+- question: What sensitivity levels do we label bank information with?
+  expected: [POL-002]
+- question: How quickly must we acknowledge a customer complaint?
+  expected: [POL-004]
+- question: What went wrong with card payments on salary day?
+  expected: [INC-2025-041]
+- question: Why did cash machines in the Kandy region stop working?
+  expected: [INC-2026-009]
+- question: Customers could not sign in to the app after a release
+  expected: [INC-2026-002]
+- question: How are encryption keys protected in hardware?
+  expected: [ARCH-004]
+- question: What are the limits on instant transfers?
+  expected: [SPEC-001]
+- question: What do we do when the card switch stops responding?
+  expected: [RB-004, ARCH-001]
+- question: How does paying a merchant by scanning a code work?
+  expected: [SPEC-002]
+- question: Which components make up the payments platform?
+  expected: [ARCH-001]
+- question: A wrong timeout value was deployed to the orchestrator
+  expected: [INC-2025-047]
