@@ -8,10 +8,10 @@ decision can be checked against the implementation.
 ```mermaid
 flowchart LR
     U[Employee browser] --> UI[Streamlit UI<br/>ui/app.py]
-    UI -- "REST + SSE (JWT)" --> API[FastAPI<br/>app/main.py]
+    UI -- REST + SSE + JWT --> API[FastAPI<br/>app/main.py]
     API --> RL[Token bucket<br/>per user]
     API --> G[LangGraph agents<br/>app/agents/graph.py]
-    G --> GEM[Gemini free tier<br/>4 Flash + 2 Flash-Lite chain]
+    G --> GEM[Gemini free tier<br/>Flash + Flash-Lite chain]
     G --> PC[(Pinecone<br/>hybrid index)]
     G --> MCP[MCP server<br/>mcp_server/server.py]
     G --> SQL[(SQLite<br/>checkpoints + memory store)]
@@ -35,14 +35,14 @@ flowchart TD
     S([question]) --> GI[guard_input]
     GI -- blocked --> RF[refuse] --> E([end])
     GI -- allowed --> LM[load_memory] --> SV[supervisor]
-    SV --> R{next step<br/>in plan}
+    SV --> R{next step in plan}
     R -- retrieve --> RA[retrieval_agent]
-    R -- research --> RS[research_agent<br/>RLM]
+    R -- research --> RS[research_agent\nRLM]
     R -- tools --> TA[tool_agent]
     R -- done --> RP[responder]
     RA --> R
     RS --> R
-    TA -- write action --> AP[approve_action<br/>interrupt]
+    TA -- write action --> AP[approve_action\ninterrupt]
     TA --> R
     AP --> R
     RP --> VL[validator]
@@ -183,8 +183,10 @@ sequenceDiagram
     participant Py as Sandbox (Python)
     participant Sub as Sub-LM calls
     participant Child as sub_agent (depth 1)
+
     Root->>Py: docs = find_documents(document_type="incident", since="2025-09-26", query="payment")
     Py-->>Root: 7 documents (catalog only)
+
     Root->>Py: batches = batch(docs, 3); texts = [read_section(d, "Root Cause") ...]
     Root->>Py: findings = llm_batch([f"Extract cause, impact, date: {t}" for t in texts])
     Py->>Sub: 3 prompts in parallel
@@ -192,6 +194,7 @@ sequenceDiagram
     Root->>Py: detail = sub_agent("Compare NorthGate timeout incidents", ["INC-2025-052", "INC-2026-021"])
     Py->>Child: new research loop over 2 documents
     Child-->>Py: FINAL(comparison)
+
     Root->>Py: FINAL(aggregated summary with recurring root causes)
 ```
 
