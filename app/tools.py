@@ -109,15 +109,16 @@ LOCAL_TOOLS = {
 _mcp_cache: dict = {"tools": {}, "loaded_at": 0.0}
 
 
-async def mcp_tools() -> dict[str, BaseTool]:
+async def mcp_tools(refresh: bool = False) -> dict[str, BaseTool]:
     """Tools published by the MCP server, cached for a minute. Empty if the server is down."""
-    if _mcp_cache["tools"] and time.monotonic() - _mcp_cache["loaded_at"] < 60:
+    if not refresh and _mcp_cache["tools"] and time.monotonic() - _mcp_cache["loaded_at"] < 60:
         return _mcp_cache["tools"]
     client = MultiServerMCPClient({"enterprise": {"transport": "streamable_http", "url": settings.mcp_url}})
     try:
         tools = await mcp_breaker.call(client.get_tools, timeout=settings.tool_timeout_s)
     except Exception as exc:
         log.warning("mcp_unavailable", error=str(exc))
+        _mcp_cache["tools"] = {}
         return {}
     _mcp_cache.update(tools={t.name: t for t in tools}, loaded_at=time.monotonic())
     return _mcp_cache["tools"]

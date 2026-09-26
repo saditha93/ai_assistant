@@ -21,7 +21,7 @@ def parse_sse(text: str) -> list[tuple[str, dict]]:
 
 @pytest.fixture
 async def client(monkeypatch):
-    async def no_mcp():
+    async def no_mcp(refresh=False):
         return {}
 
     monkeypatch.setattr(tools, "mcp_tools", no_mcp)

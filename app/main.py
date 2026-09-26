@@ -225,7 +225,7 @@ async def feedback(body: FeedbackRequest, request: Request, user: User = Depends
 
 @app.get("/health")
 async def health():
-    mcp_up = bool(await mcp_tools())
+    mcp_up = bool(await mcp_tools(refresh=True))
     return {
         "status": "ok",
         "dependencies": {
