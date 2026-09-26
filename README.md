@@ -51,9 +51,9 @@ docker compose up --build
 
 ```bash
 uv sync
-uv run python -m mcp_server.server                 # terminal 1, port 8001
-uv run uvicorn app.main:app --port 8000            # terminal 2
-uv run streamlit run ui/app.py                     # terminal 3, port 8501
+uv run python -m mcp_server.server      
+uv run uvicorn app.main:app --port 8000        
+uv run streamlit run ui/app.py              
 ```
 
 ### Loading the knowledge base into Pinecone
@@ -104,7 +104,7 @@ the whole test suite runs offline.
 ## Tests and evaluation
 
 ```bash
-uv run pytest             # 52 tests, no keys or network needed
+uv run pytest           
 uv run ruff check .
 uv run python -m evals.run
 ```
