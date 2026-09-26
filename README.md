@@ -31,7 +31,7 @@ flowchart LR
 ### With Docker
 
 ```bash
-cp .env.example .env            # add keys (all optional, see below)
+cp .env.example .env
 docker compose up --build
 ```
 
