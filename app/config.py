@@ -15,9 +15,7 @@ class Settings(BaseSettings):
     brand_name: str = "Crestline Commercial Bank"
     assistant_name: str = "Crest"
 
-    # Gemini
     google_api_key: str = ""
-    # Comma-separated. Free tier quotas are per model, so several models spread the load.
     gemini_model: str = "gemini-3.8-flash,gemini-3.7-flash,gemini-3.6-flash,gemini-3.5-flash"
     gemini_fallback_model: str = "gemini-3.5-flash-lite,gemini-3.1-flash-lite"
     gemini_rpm: int = 10
@@ -26,7 +24,6 @@ class Settings(BaseSettings):
     gemini_thinking_level: str = "low"
     llm_timeout_s: float = 30
 
-    # Pinecone
     pinecone_api_key: str = ""
     pinecone_index: str = "crestline-kb"
     pinecone_region: str = "us-east-1"
@@ -35,7 +32,6 @@ class Settings(BaseSettings):
     retrieval_top_k: int = 6
     min_rerank_score: float = 0.15
 
-    # MCP
     mcp_url: str = "http://localhost:8001/mcp"
     tool_timeout_s: float = 10
 

@@ -10,7 +10,7 @@ def setup_logging() -> None:
     logging.basicConfig(format="%(message)s", stream=sys.stdout, level=settings.log_level)
     structlog.configure(
         processors=[
-            structlog.contextvars.merge_contextvars,  # request_id, user, session bound per request
+            structlog.contextvars.merge_contextvars,
             structlog.processors.add_log_level,
             structlog.processors.TimeStamper(fmt="iso"),
             structlog.processors.format_exc_info,

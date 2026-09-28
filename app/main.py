@@ -95,9 +95,6 @@ async def login(body: LoginRequest):
 async def me(user: User = Depends(current_user)):
     return user.__dict__ | {"tools": sorted(user.tools), "access_levels": user.access_levels}
 
-
-# ---- chat ----
-
 def _config(user: User, session_id: str, run_id: uuid.UUID) -> dict:
     thread_id = f"{user.username}:{session_id}"
     return {
